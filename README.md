@@ -64,15 +64,6 @@ It applies **policy + services + scheduled‑task** hardening and installs a **S
 This script is built for **POS terminals, kiosks, desktops, laptops, and virtual machines**.  
 It automatically detects your environment type and applies the same reliable hardening logic for both **Windows 10** and **Windows 11**.
 
----
-
-## 🖼️ Screenshot
-
-Add your screenshot by placing an image named `screenshot.png` in the same directory and linking it here:
-
-```markdown
-![WU-Manager Menu Screenshot](screenshot.png)
-```
 
 ---
 

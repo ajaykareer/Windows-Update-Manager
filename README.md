@@ -169,6 +169,7 @@ MIT License — Copyright (c) 2025 KAREER
 
 ---
 
-## 📷 Screenshot (optional)
+## 📷 Screenshot
+![WU-Manager Menu Screenshot](screenshot.png)
 
-If you want to add screenshots to your README, include a capture of the main menu and the status table here.
+

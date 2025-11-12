@@ -1,6 +1,7 @@
-# WU‑Manager — Windows Update **hard lock** for POS
+# WU‑Manager — Windows Update **hard lock** for POS & Standard Systems
 
-A tiny, battle‑tested batch script to **fully block Windows Update** on Windows 10/11 POS machines (and toggle it back when needed). It applies **policy + services + scheduled‑task** hardening and installs a **SYSTEM watchdog** so the block survives reboots and self‑healing attempts (WaaS Medic, USO, etc.).
+A tiny, battle‑tested batch script to **fully block Windows Update** on Windows 10/11 POS machines, kiosks, and standard systems (desktops, laptops, servers).  
+It applies **policy + services + scheduled‑task** hardening and installs a **SYSTEM watchdog** so the block survives reboots and self‑healing attempts (WaaS Medic, USO, etc.).
 
 > Created with ❤️ by **KAREER**
 
@@ -25,72 +26,11 @@ A tiny, battle‑tested batch script to **fully block Windows Update** on Window
 
 ---
 
-## 📦 What this script actually changes
-
-### Registry (Policy)
-Creates/sets under `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate` (and `...\AU`):
-
-- `TargetReleaseVersion` = `1`  
-- `TargetReleaseVersionInfo` = `<current DisplayVersion>` (e.g., `22H2`)
-- `ProductVersion` = `Windows 10` or `Windows 11`
-- `SetDisableUXWUAccess` = `1`
-- `DisableWindowsUpdateAccess` = `1`
-- `ExcludeWUDriversInQualityUpdate` = `1`
-- `DisableOSUpgrade` = `1`
-- `DoNotConnectToWindowsUpdateInternetLocations` = `1`
-- `WUServer` & `WUStatusServer` = `http://127.0.0.1:8530`
-- `AU\UseWUServer` = `1`
-- `AU\NoAutoUpdate` = `1`
-
-> On **restore**, the entire `...\WindowsUpdate` policy branch is **deleted**.
-
-### Services
-- **Hard block:** stop and `Start=Disabled` for
-  - `wuauserv`, `UsoSvc`, `BITS`, `DoSvc`, `WaaSMedicSvc`
-- **Restore:** set `Start=Manual` and attempt to start them.
-
-### Scheduled Tasks
-- **Hard block:** `schtasks /Change /Disable` for tasks in
-  - `\Microsoft\Windows\WindowsUpdate\*`
-  - `\Microsoft\Windows\UpdateOrchestrator\*`
-  - `\Microsoft\Windows\WaaSMedic\*`
-- **Restore:** `schtasks /Change /Enable` for the same list.
-
-### Watchdog (Task Scheduler + helper files)
-Files created in `%ProgramData%\WU_Guardian\`:
-- `guardian.cmd` — enforces the block (kills processes, stops & disables WU services)
-- `run.cmd` — wrapper used by the scheduled tasks
-
-Tasks created:
-- `WU-Guardian` (SYSTEM, **every 1 minute**)
-- `WU-Guardian_Startup` (SYSTEM, **at boot**)
-
-On **restore**, both tasks and the folder/files are **deleted**.
-
----
-
-## 🖥️ Menu
-
-```
-[1] STOP updates completely   (apply hard block + watchdog)
-[2] START updates             (restore + remove watchdog)
-[3] CHECK status (detailed)
-[0] EXIT
-```
-
-- **[1] STOP** — Applies all registry, service, and scheduled‑task hardening, installs the watchdog, and runs it once immediately.
-- **[2] START** — Removes policy, restores default Microsoft scheduled tasks, sets services back to Manual, deletes watchdog tasks and files.
-- **[3] CHECK** — Shows a PowerShell table of service state and the current policy signals; also prints a concise **Current** status:
-  - `ENABLED` (updates normal)
-  - `BLOCKED (POLICY)` (policy keys forcing WSUS / NoAutoUpdate)
-  - `BLOCKED (HARD)` (services disabled + stopped)
-
----
-
 ## ✅ Requirements
 
-- Windows 10 or Windows 11
-- Run from an **elevated** command prompt (Right‑click → *Run as administrator*)
+- Windows 10 or Windows 11  
+- Fully compatible with **POS (Point-of-Sale)** systems, kiosks, and any other standard Windows environment  
+- Run from an **elevated** command prompt (Right‑click → *Run as administrator*)  
 - Console width ~108×34 (the script sets this automatically with `mode con`)
 
 ---
@@ -108,11 +48,31 @@ On **restore**, both tasks and the folder/files are **deleted**.
 
 ---
 
-## 🛠️ Processes & tasks it keeps in check
+## 🖥️ Menu
 
-- **Processes:** `MoUsoCoreWorker.exe`, `usoclient.exe`, `WaaSMedicAgent.exe`
-- **Services:** `wuauserv`, `UsoSvc`, `BITS`, `DoSvc`, `WaaSMedicSvc`
-- **Scheduler:** common Update Orchestrator, WindowsUpdate, and WaaSMedic tasks
+```
+[1] STOP updates completely   (apply hard block + watchdog)
+[2] START updates             (restore + remove watchdog)
+[3] CHECK status (detailed)
+[0] EXIT
+```
+
+---
+
+## 🧩 Compatibility
+
+This script is built for **POS terminals, kiosks, desktops, laptops, and virtual machines**.  
+It automatically detects your environment type and applies the same reliable hardening logic for both **Windows 10** and **Windows 11**.
+
+---
+
+## 🖼️ Screenshot
+
+Add your screenshot by placing an image named `screenshot.png` in the same directory and linking it here:
+
+```markdown
+![WU-Manager Menu Screenshot](screenshot.png)
+```
 
 ---
 
@@ -167,9 +127,5 @@ MIT License — Copyright (c) 2025 KAREER
 - Status detection maps service `Start` DWORD to friendly text.
 - Designed to be **idempotent** and safe to re‑run.
 
----
-
 ## 📷 Screenshot
 ![WU-Manager Menu Screenshot](screenshot.png)
-
-

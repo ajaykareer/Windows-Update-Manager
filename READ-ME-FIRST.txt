@@ -1,0 +1,54 @@
+UPDATE CONTROL DESKTOP 4.2.0
+
+QUICK START
+Open Update-Control.exe and accept the administrator prompt.
+The EXE contains all required application files and extracts them automatically.
+If you downloaded the ZIP instead, extract ALL files and open Update-Control.cmd.
+
+If you previously used the older blocker, choose Restore Windows FIRST.
+Restart if the result asks you to, then reopen the application.
+
+For Microsoft Store / ChatGPT installs, choose Use Store Friendly.
+It keeps automatic OS updates disabled by policy on Pro, Enterprise, Education
+and IoT Enterprise, while allowing shared download and install services to run.
+It creates no watchdog. Windows Home does not support this mode in this tool.
+Manual updates, pending installations and organization policies can still apply.
+
+Hard Block disables shared Windows Update/BITS/Delivery Optimization services.
+It can break Store and other downloads. It uses one POS-WU-Guardian-v4 task,
+with startup and every-minute triggers. Closing the GUI does not remove it.
+Windows servicing or other administration software can counteract the block.
+
+Restore Windows disarms enforcement first, removes every recognized watchdog
+from all Task Scheduler folders, and restores the saved pre-block settings.
+It handles both WU-Guardian and POS-WU-Guardian names (including _Startup and
+_Hourly) plus POS-WU-Guardian-v4. Failed cleanup is reported explicitly.
+The original v4 baseline survives mode switches and is retired after restore.
+Older batch versions did not save originals; legacy repair is best effort.
+
+THE INTERFACE
+Overview: three modes, status and watchdog count.
+System details: service startup settings and watchdog list.
+Activity: live progress, saved logs, backups and diagnostic reports.
+Hard Block requires confirmation. Wait for changes to finish before closing.
+Restart and error messages are distinct. No automatic restart or update scan.
+Update-Control-Console.cmd provides a keyboard-menu fallback.
+
+FILES AND DATA
+EXE components: %ProgramFiles%\Kareer Update Control
+State/logs/backups: %ProgramData%\POSUpdateControl
+Legacy repair backups: %ProgramData%\POS_WU_Repair
+Keep backups until you have confirmed recovery. Restore BEFORE deleting data.
+The EXE is unsigned and Windows may show an unknown-publisher prompt.
+Standard Windows 10/11 desktop installations include the required PowerShell
+5.1 and .NET Framework runtime; no additional app runtime is bundled.
+
+TESTING
+Version 4.2.0 is a preview release. Automated tests cover controller recovery,
+legacy cleanup, WPF interactions, packaging, and isolated Windows API behavior.
+They do not prove real Windows Update blocking or a Store install on your PC.
+Current CI results and exact coverage are documented in the repository.
+
+SOURCE, DOCUMENTATION AND SUPPORT
+https://github.com/ajaykareer/Windows-Update-Manager
+See docs/VALIDATION.md and docs/TROUBLESHOOTING.md.

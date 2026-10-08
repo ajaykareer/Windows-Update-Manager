@@ -1,122 +1,80 @@
-# WU‑Manager — Windows Update **hard lock** for POS & Standard Systems
+# Update Control Desktop
 
-A tiny, battle‑tested batch script to **fully block Windows Update** on Windows 10/11 POS machines, kiosks, and standard systems (desktops, laptops, servers).  
-It applies **policy + services + scheduled‑task** hardening and installs a **SYSTEM watchdog** so the block survives reboots and self‑healing attempts (WaaS Medic, USO, etc.).
+[![Windows validation](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml/badge.svg)](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml)
 
-> Created with ❤️ by **KAREER**
+A Windows desktop interface for controlling automatic OS updates, keeping Microsoft Store available, and removing this tool's blocker reliably.
 
----
+**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.0/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.0/Update-Control-Desktop-v4.2.0.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.0)
 
-## ✨ Key Features
+Version 4.2.0 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
 
-- **One‑key hard block / restore** — menu‑driven UI with reliable `CHOICE` input.
-- **Watchdog** — creates 2 Task Scheduler jobs (SYSTEM):
-  - `WU-Guardian` (runs **every 1 minute**)
-  - `WU-Guardian_Startup` (runs **at boot**)
-  Both call a small guardian script in `%ProgramData%\WU_Guardian\` that repeatedly kills update processes, stops services, and forces their startup type to **Disabled**.
-- **Strong policy layer** — writes Windows Update policy keys to disable the UX and point WU to a **dead WSUS** (`http://127.0.0.1:8530`) so scans fail cleanly.
-- **Services lockdown** — stops and **disables**:
-  - `wuauserv`, `UsoSvc`, `BITS`, `DoSvc`, `WaaSMedicSvc`
-- **Scheduled tasks lockdown** — disables common Update/Orchestrator/Medic tasks (e.g. `Schedule Scan`, `USO_UxBroker_*`, `PerformRemediation`, etc.).
-- **Smart status screen** — PowerShell table shows Service **Status** and **StartType** + relevant policy values (`NoAutoUpdate`, `UseWUServer`, `WUServer`).
-- **Safe admin checks & clear ASCII UI** — works on any console/font; no stray buffered keys.
-- **Windows 10 & 11 aware** — detects product and display version for clarity.
-- **Idempotent** — you can run the hard block multiple times; the result remains consistent.
-- **Clean restore** — removes policy keys, restores services to **Manual**, re‑enables Microsoft tasks, and **uninstalls the watchdog**.
+![Update Control desktop overview](docs/screenshots/overview.png)
 
----
+*Actual WPF interface rendered with sample status. The screenshot is not proof of a live Windows Update block.*
 
-## ✅ Requirements
+## Start here
 
-- Windows 10 or Windows 11  
-- Fully compatible with **POS (Point-of-Sale)** systems, kiosks, and any other standard Windows environment  
-- Run from an **elevated** command prompt (Right‑click → *Run as administrator*)  
-- Console width ~108×34 (the script sets this automatically with `mode con`)
+1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
+2. If you used the old script, select **Restore Windows** first. Follow any restart message.
+3. Select **Use Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
+4. Select **Restore Windows** whenever you want to remove this tool's block.
 
----
+You download one EXE. It automatically extracts its embedded components into a protected version folder under `%ProgramFiles%\Kareer Update Control`. It uses Windows PowerShell 5.1 and .NET Framework already present on standard Windows 10/11 desktop installations. It does not require Python, Node, or a separate setup wizard.
 
-## 🚀 Usage
+The EXE is **unsigned**. Windows may display an unknown-publisher or reputation warning. Download only from this repository's release and compare its hash with the release's `SHA256SUMS.txt`. The hash detects a damaged or different download; it does not replace a publisher signature.
 
-1. Copy `WU-ManagerFinal.bat` to the machine.
-2. **Right‑click → Run as administrator.**
-3. Choose an option:
-   - Press **1** to hard‑block updates and install the watchdog.
-   - Press **2** to restore normal Windows Update behavior.
-   - Press **3** to view detailed status.
+For source access, the portable ZIP contains the same components. Extract everything and open `Update-Control.cmd`. Both `WindowsUpdateManager.bat` and the older `WU-ManagerFinal.bat` filename now launch the GUI. A keyboard menu remains available in `Update-Control-Console.cmd`.
 
-> The script calls `gpupdate /force` where appropriate to apply policy immediately.
+## Choose a mode
 
----
+| Mode | Automatic Windows updates | Microsoft Store | Watchdogs |
+| --- | --- | --- | --- |
+| **Store Friendly** | Manual-update policy on supported editions | Shared download/install services available | None |
+| **Hard Block** | Stops and disables shared update services; best effort | Downloads may fail | One task, with startup and minute triggers |
+| **Restore Windows** | Restores the saved settings from before this tool's current blocking session | Removes this tool's restrictions | All recognized legacy/current tasks removed |
 
-## 🖥️ Menu
+**Store Friendly is the recommended mode for keeping app installation available.** It sets `NoAutoUpdate=1`; it is not a complete lock on every kind of update. Manual updates and already pending installations are not cancelled. Organization or MDM settings can override local policy, and known deadline/WSUS conflicts are refused. Windows Home is not offered this policy mode; use Windows Settings' pause controls on Home.
 
-```
-[1] STOP updates completely   (apply hard block + watchdog)
-[2] START updates             (restore + remove watchdog)
-[3] CHECK status (detailed)
-[0] EXIT
-```
+Hard Block also affects BITS and Delivery Optimization, which other applications use. Windows servicing or other administrative software may counteract service blocking. The application does not promise permanent suppression of all updates.
 
----
+## Reliable removal and recovery
 
-## 🧩 Compatibility
+The controller disarms its saved state **before** removing watchdogs. It searches every Task Scheduler folder for the exact names used by previous releases:
 
-This script is built for **POS terminals, kiosks, desktops, laptops, and virtual machines**.  
-It automatically detects your environment type and applies the same reliable hardening logic for both **Windows 10** and **Windows 11**.
+- `WU-Guardian`, `WU-Guardian_Startup`, `WU-Guardian_Hourly`
+- `POS-WU-Guardian`, `POS-WU-Guardian_Startup`, `POS-WU-Guardian_Hourly`
+- `POS-WU-Guardian-v4`
 
+It attempts disable, stop, and deletion independently; retries with the native Task Scheduler command; stops matching old guardian command processes; and verifies that no matching tasks remain. An incomplete removal is an error, not a success message.
 
----
+A protected baseline preserves original service startup settings and the original automatic-update policy across mode switches. An exclusive operation lock prevents simultaneous mode changes and guardian enforcement. A missing, corrupt, or transitional state never authorizes enforcement. Failed transitions attempt rollback and show **Needs attention**.
 
-## 🔒 When should I use a “hard lock”?
+Exact original-setting restoration applies to changes first made by version 4. The earlier batch scripts did not save full originals; their migration repair removes recognized restrictions and returns disabled dependencies to runnable settings. Existing unrelated administrator settings are preserved where identifiable.
 
-- POS terminals and kiosks where **surprise reboots** or background updates are unacceptable.
-- Lab/test rigs where you need a frozen state during experiments.
-- Networks without WSUS where you still want an effective, reversible “off switch”.
+## Interface
 
-> **Note:** Blocking updates carries operational risk. Apply in controlled environments and maintain an offline patching process.
+Overview shows the selected mode, watchdog count and available actions. System details shows service and task status. Activity provides progress, logs, backups, and diagnostic reports. Hard Block has a confirmation dialog; failure and restart results are distinct. No restart or Windows Update scan is issued automatically.
 
----
+| System details | Activity and recovery |
+| --- | --- |
+| ![Service and watchdog details, sample status](docs/screenshots/system-details.png) | ![Recovery activity, sample status](docs/screenshots/activity.png) |
 
-## ♻️ Uninstall / Restore
+## Documentation
 
-Just run the script as admin and press **[2] START updates**.  
-It will:
-- Delete the Windows Update policy branch
-- Re‑enable Microsoft scheduled tasks
-- Set services to **Manual** and start them
-- Remove the watchdog tasks and `%ProgramData%\WU_Guardian` folder
+- [Build and package from source](docs/BUILD.md)
+- [Validation coverage and known limitations](docs/VALIDATION.md)
+- [Troubleshooting and removing the application](docs/TROUBLESHOOTING.md)
+- [Changes in this release](CHANGELOG.md)
+- [Quick start included with the application](READ-ME-FIRST.txt)
 
----
+Windows 10/11 desktop, Windows PowerShell 5.1, administrator access for changes. Store Friendly supports Pro, Enterprise, Education and IoT Enterprise. This project does not change your Windows edition's lifecycle or security support.
 
-## 📄 File layout (created by the script)
+Data and backups: `%ProgramData%\POSUpdateControl`. Legacy repair backups: `%ProgramData%\POS_WU_Repair`. Restore before deleting the application or its data.
 
-```
-%ProgramData%\WU_Guardian\
- ├─ guardian.cmd    (enforcer; run by tasks)
- └─ run.cmd         (wrapper used by tasks)
-Task Scheduler:
- ├─ WU-Guardian             (SYSTEM, every minute)
- └─ WU-Guardian_Startup     (SYSTEM, at boot)
-```
+## Policy references
 
----
+- [Microsoft: configure Windows Update client policies](https://learn.microsoft.com/en-us/windows/deployment/update/waas-wu-settings)
+- [Microsoft: update policy applicability and deadlines](https://learn.microsoft.com/en-us/windows/client-management/mdm/policy-csp-update)
+- [Microsoft: troubleshooting Store download failures](https://learn.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/troubleshooting-microsoft-store-apps-download-failure)
 
-## 🤝 License
-
-You may include any license you prefer (MIT recommended). Example:
-
-```
-MIT License — Copyright (c) 2025 KAREER
-```
-
----
-
-## 🧭 Notes
-
-- The script uses **ASCII UI** so it works with any font/locale.
-- Uses `CHOICE` to avoid buffered key issues in menus.
-- Status detection maps service `Start` DWORD to friendly text.
-- Designed to be **idempotent** and safe to re‑run.
-
-## 📷 Screenshot
-![WU-Manager Menu Screenshot](screenshot.png)
+MIT licensed. See [LICENSE](LICENSE).

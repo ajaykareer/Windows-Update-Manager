@@ -1,0 +1,7 @@
+dist/
+tests/runs/
+*.log
+*.tmp
+*.user
+*.suo
+.vs/

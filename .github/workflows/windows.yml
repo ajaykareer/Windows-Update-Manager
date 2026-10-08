@@ -1,0 +1,48 @@
+name: Windows validation
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell sources
+        run: |
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $tokens=$null; $errors=$null
+            $null=[Management.Automation.Language.Parser]::ParseFile($_.FullName,[ref]$tokens,[ref]$errors)
+            if($errors.Count){throw ($errors | Out-String)}
+          }
+      - name: Controller regression tests
+        run: .\tests\Test-UpdateControl.ps1
+      - name: Legacy repair regression tests
+        run: .\tests\Test-Repair.ps1
+      - name: WPF interaction and read-only worker smoke test
+        run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -SmokeTest
+      - name: Real Windows APIs against isolated temporary services
+        run: .\tests\Test-WindowsIntegration.ps1
+      - name: Build EXE and portable ZIP
+        run: .\scripts\Build.ps1
+      - name: Validate embedded package and real EXE extraction
+        run: .\tests\Test-Package.ps1 -Extract
+      - name: Upload packages and validation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Update-Control-Windows
+          path: |
+            dist/Update-Control.exe
+            dist/Update-Control-Desktop-v4.2.0.zip
+            dist/SHA256SUMS.txt
+            dist/package-check.txt
+            dist/integration-logs/
+          if-no-files-found: warn

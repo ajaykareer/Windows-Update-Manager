@@ -123,3 +123,6 @@ Assert ($body.IndexOf("        Stop-Guardian`n") -lt $body.IndexOf("        Remo
 Assert ($body -notmatch '(?m)^\s*Remove-Item\s') 'Unexpected recursive/key deletion appeared.'
 Write-Host 'PASS: backup and guardian teardown precede configuration repair.'
 Write-Host 'All isolated repair checks passed. No live system settings were changed.'
+# Failure-path mocks intentionally set LASTEXITCODE. Do not leak that simulated
+# native failure into GitHub Actions' outer PowerShell wrapper after assertions pass.
+exit 0

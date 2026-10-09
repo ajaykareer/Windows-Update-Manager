@@ -12,12 +12,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Package.ps1
 The build creates these ignored outputs in `dist`:
 
 - `Update-Control.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon.
-- `Update-Control-Desktop-v4.2.0.zip`: the same application components for manual extraction.
+- `Update-Control-Desktop-v4.2.1.zip`: the same application components for manual extraction.
 - `SHA256SUMS.txt`: checksums for both downloads.
+- `Update-Control.ico` and `Update-Control.png`: reusable application icon assets (also covered by the checksums).
+
+The ICO contains 16, 24, 32, 48, 64, 128 and 256 pixel frames and is embedded in the executable and used by the WPF window. To regenerate it and the 1024 pixel PNG from the editable vector drawing, run `powershell.exe -NoProfile -STA -File .\scripts\Build-Icon.ps1`.
 
 The launcher validates the embedded archive and caches files under `%ProgramFiles%\Kareer Update Control\<version>-<payload hash>`. Only Administrators and SYSTEM can write the application components; Users can read and execute. Paths through reparse points are refused. Changed cached files cause a startup error. The launcher starts built-in Windows PowerShell in STA mode to host WPF. The app remains script based internally; “single EXE” means a single download with automatic extraction, not a separately compiled WPF application.
 
 No signing certificate is included. An unsigned build has no verified publisher identity.
+
+See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. The public preview is still unsigned.
 
 ## Local checks
 

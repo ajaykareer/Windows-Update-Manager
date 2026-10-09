@@ -52,7 +52,7 @@
     <Grid>
       <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Border Grid.Row="0" Background="#101827" BorderBrush="#253349" BorderThickness="0,0,0,1">
-        <Grid Margin="18,0,5,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Fill="#4CE1BE" Width="8" Height="8" Margin="0,0,10,0"/><TextBlock Text="Update Control" Foreground="#C5D4E5" FontWeight="SemiBold"/><TextBlock Text=" /  Desktop edition" Foreground="#748BA6" Margin="8,0,0,0"/></StackPanel>
+        <Grid Margin="18,0,5,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="TitleIcon" Width="22" Height="22" Margin="0,0,10,0"/><TextBlock Text="Update Control" Foreground="#C5D4E5" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text=" /  Desktop edition" Foreground="#748BA6" Margin="8,0,0,0" VerticalAlignment="Center"/></StackPanel>
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}" Content="&#x2014;" ToolTip="Minimize"/><Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#x25A1;" ToolTip="Maximize or restore"/><Button x:Name="CloseButton" Style="{StaticResource CaptionButton}" Content="&#x2715;" ToolTip="Close"/></StackPanel>
         </Grid>
       </Border>
@@ -60,7 +60,7 @@
         <Border Background="#101827" BorderBrush="#253349" BorderThickness="0,0,1,0" Padding="16,28,16,20">
           <DockPanel LastChildFill="False">
             <StackPanel DockPanel.Dock="Top">
-              <Border Width="42" Height="46" HorizontalAlignment="Left" Margin="12,0,0,12"><Path Data="M21,2 L38,9 L38,23 C38,34 29,41 21,45 C13,41 4,34 4,23 L4,9 Z M12,23 L18,29 L30,16" Stroke="#4CE1BE" StrokeThickness="2.4" StrokeLineJoin="Round" Fill="#14392F"/></Border>
+              <Image x:Name="BrandIcon" Width="52" Height="52" HorizontalAlignment="Left" Margin="9,0,0,12"/>
               <TextBlock Text="UPDATE" FontSize="21" FontWeight="Bold" Margin="12,0,0,0"/><TextBlock Text="CONTROL" FontSize="21" FontWeight="Light" Foreground="#90A8C4" Margin="12,0,0,30"/>
               <Button x:Name="OverviewNav" Style="{StaticResource NavButton}" Content="Overview"/>
               <Button x:Name="DetailsNav" Style="{StaticResource NavButton}" Content="System details"/>
@@ -69,7 +69,7 @@
             <StackPanel DockPanel.Dock="Bottom">
               <Border Height="1" Background="#293A51" Margin="12,0,12,16"/>
               <TextBlock x:Name="AccessText" Text="Checking access" Foreground="#4CE1BE" FontWeight="SemiBold" FontSize="12" Margin="12,0,0,6"/>
-              <TextBlock Text="v4.2  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
+              <TextBlock Text="v4.2.1  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
             </StackPanel>
           </DockPanel>
         </Border>

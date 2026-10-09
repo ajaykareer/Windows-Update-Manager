@@ -1,4 +1,4 @@
-UPDATE CONTROL DESKTOP 4.2.0
+UPDATE CONTROL DESKTOP 4.2.1
 
 QUICK START
 Open Update-Control.exe and accept the administrator prompt.
@@ -44,7 +44,7 @@ Standard Windows 10/11 desktop installations include the required PowerShell
 5.1 and .NET Framework runtime; no additional app runtime is bundled.
 
 TESTING
-Version 4.2.0 is a preview release. Automated tests cover controller recovery,
+Version 4.2.1 is a preview release. Automated tests cover controller recovery,
 legacy cleanup, WPF interactions, packaging, and isolated Windows API behavior.
 They do not prove real Windows Update blocking or a Store install on your PC.
 Current CI results and exact coverage are documented in the repository.

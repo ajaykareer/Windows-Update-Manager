@@ -261,16 +261,21 @@ function Export-UiPreview([string]$Path) {
 }
 
 try {
-    foreach($file in @('UpdateControl.xaml','UpdateControl.Worker.ps1','UpdateControl.ps1','Repair-WindowsStore.ps1')) {
+    foreach($file in @('UpdateControl.xaml','UpdateControl.Worker.ps1','UpdateControl.ps1','Repair-WindowsStore.ps1','Update-Control.ico')) {
         if(-not(Test-Path -LiteralPath (Join-Path $PSScriptRoot $file))){throw "Missing $file. Extract every file in the ZIP into one folder."}
     }
     [xml]$xaml=Get-Content -LiteralPath (Join-Path $PSScriptRoot 'UpdateControl.xaml') -Raw
     $reader=New-Object Xml.XmlNodeReader($xaml)
     $script:Window=[Windows.Markup.XamlReader]::Load($reader)
+    $iconDecoder=[Windows.Media.Imaging.IconBitmapDecoder]::new([uri](Join-Path $PSScriptRoot 'Update-Control.ico'),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+    $icon=$iconDecoder.Frames | Sort-Object PixelWidth -Descending | Select-Object -First 1
+    $script:Window.Icon=$icon
     foreach($node in $xaml.SelectNodes('//*[@*[name()="x:Name"]]')) {
         $name=$node.GetAttribute('Name','http://schemas.microsoft.com/winfx/2006/xaml')
         $script:Ui[$name]=$script:Window.FindName($name)
     }
+    $script:Ui.TitleIcon.Source=$icon
+    $script:Ui.BrandIcon.Source=$icon
     $area=[Windows.SystemParameters]::WorkArea
     $script:Window.Width=[Math]::Min(1160,[Math]::Max(940,$area.Width-30))
     $script:Window.Height=[Math]::Min(810,[Math]::Max(620,$area.Height-30))
@@ -332,6 +337,7 @@ try {
             $script:Ui.ProgressBar.Value=45
         }
         if($SmokeTest){
+            if(-not $script:Window.Icon -or -not $script:Ui.TitleIcon.Source -or -not $script:Ui.BrandIcon.Source){throw 'Application icon did not load in the window and branding.'}
             # Test the real hidden worker and polling path with read-only status only.
             $script:ViewOnly=$true
             Start-UiJob 'Status'

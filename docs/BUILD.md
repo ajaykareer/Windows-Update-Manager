@@ -12,7 +12,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Package.ps1
 The build creates these ignored outputs in `dist`:
 
 - `Update-Control.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon.
-- `Update-Control-Desktop-v4.2.1.zip`: the same application components for manual extraction.
+- `Update-Control-Desktop-v4.2.2.zip`: the same application components for manual extraction.
 - `SHA256SUMS.txt`: checksums for both downloads.
 - `Update-Control.ico` and `Update-Control.png`: reusable application icon assets (also covered by the checksums).
 
@@ -39,9 +39,11 @@ These checks use mocked mutations, temporary files, real task-definition builder
 ## Regenerate screenshots
 
 ```powershell
-powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -PreviewPath .\docs\screenshots\overview.png -PreviewMode Store
+powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -PreviewPath .\docs\screenshots\overview.png -PreviewMode Unmanaged -PreviewSelection Store
 powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -PreviewPath .\docs\screenshots\system-details.png -PreviewMode Hard -PreviewPage Details
 powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -PreviewPath .\docs\screenshots\activity.png -PreviewMode RecoveryRequired -PreviewPage Activity
 ```
 
 Preview renders the actual WPF layout offscreen with labeled sample data. It does not change Windows settings.
+
+Use `-PreviewSelection Hard` to show a pending Hard Block choice independently of the current mode. `-PreviewWidth 940 -PreviewHeight 620` checks the minimum window layout with the action bar still visible.

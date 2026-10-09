@@ -5,6 +5,7 @@ param(
     [string]$PreviewPath,
     [ValidateSet('Unmanaged','Store','Hard','Normal','RecoveryRequired','Busy')][string]$PreviewMode='Store',
     [ValidateSet('Overview','Details','Activity')][string]$PreviewPage='Overview',
+    [ValidateSet('None','Store','Hard','Restore')][string]$PreviewSelection='None',
     [int]$PreviewWidth=1160,
     [int]$PreviewHeight=810,
     [switch]$SmokeTest
@@ -40,6 +41,7 @@ $script:LastLog=$null
 $script:LastWorkerResult=$null
 $script:Page='Overview'
 $script:StoreSupported=$true
+$script:SelectedMode=$null
 $script:Ui=@{}
 
 function Add-Activity([string]$Message) {
@@ -54,22 +56,55 @@ function Show-Notice([string]$Message) {
 }
 function Set-UiAvailability {
     $idle=$null -eq $script:ActiveJob
-    $canChange=$idle -and -not $script:ViewOnly -and $null -ne $script:LastStatus
-    $script:Ui.StoreButton.IsEnabled=$canChange -and $script:StoreSupported
-    $script:Ui.HardButton.IsEnabled=$canChange
-    $script:Ui.RestoreButton.IsEnabled=$canChange
+    $selectable=$idle -or $script:ActiveJob.Action -eq 'Status'
+    foreach($name in @('StoreChoice','HardChoice','RestoreChoice')){$script:Ui[$name].IsEnabled=$selectable}
+    $reason=if($script:ViewOnly){'Read-only access. Reopen as administrator to apply changes.'}
+        elseif(-not $idle){'An operation is running. Your selection is kept; wait for it to finish.'}
+        elseif($null -eq $script:LastStatus){'Waiting for PC status. Use Refresh status if this does not finish.'}
+        elseif(-not $script:SelectedMode){'Select a card above to continue. Windows stays unchanged until you apply.'}
+        elseif($script:SelectedMode -eq 'Store' -and -not $script:StoreSupported){'Store Friendly is unavailable on this Windows edition. Use Windows Settings > Pause updates.'}
+        else{$null}
+    $labels=@{Store='Store Friendly';Hard='Hard Block';Restore='Restore Windows'}
+    $buttons=@{Store='Apply Store Friendly';Hard='Review Hard Block...';Restore='Restore Windows'}
+    $hints=@{Store='Shared app services stay available. Automatic OS updates use manual policy.';Hard='Store downloads will be restricted. You will confirm before anything changes.';Restore='Remove known watchdogs and restore the saved settings from before this tool.'}
+    $script:Ui.SelectionTitle.Text=if($script:SelectedMode){'2  Selected: '+$labels[$script:SelectedMode]}else{'2  Apply your selection'}
+    $script:Ui.ApplyButton.Content=if($script:SelectedMode){$buttons[$script:SelectedMode]}else{'Select a mode'}
+    $script:Ui.SelectionHint.Text=if($reason){$reason}else{$hints[$script:SelectedMode]}
+    $script:Ui.ApplyButton.ToolTip=if($reason){$reason}else{'Apply the selected mode. Selecting its card alone makes no changes.'}
+    $script:Ui.ApplyButton.IsEnabled=-not [bool]$reason
+    $script:Ui.AppContent.IsEnabled=$script:Ui.ConfirmOverlay.Visibility -ne 'Visible'
     $script:Ui.RefreshButton.IsEnabled=$idle
     $script:Ui.ReportButton.IsEnabled=$idle
 }
+function Select-Mode([string]$Mode) {
+    if($Mode -notin @('Store','Hard','Restore')){return}
+    $script:SelectedMode=$Mode
+    Set-UiAvailability
+}
+function Close-HardConfirmation {
+    $script:Ui.ConfirmOverlay.Visibility='Collapsed'
+    Set-UiAvailability
+    $script:Ui.ApplyButton.Focus() | Out-Null
+}
+function Apply-SelectedMode {
+    Set-UiAvailability
+    if(-not $script:Ui.ApplyButton.IsEnabled){return}
+    if($script:SelectedMode -eq 'Hard'){
+        $script:Ui.ConfirmOverlay.Visibility='Visible'
+        Set-UiAvailability
+        $script:Ui.CancelHardButton.Focus() | Out-Null
+    }else{Start-UiJob $script:SelectedMode}
+}
 function Show-Page([string]$Name) {
     $script:Page=$Name
+    $script:Ui.SelectionPanel.Visibility=if($Name -eq 'Overview'){'Visible'}else{'Collapsed'}
     foreach($page in @('Overview','Details','Activity')) {
         $script:Ui[($page+'Page')].Visibility=if($page -eq $Name){'Visible'}else{'Collapsed'}
         $script:Ui[($page+'Nav')].Background=if($page -eq $Name){'#203149'}else{'Transparent'}
         $script:Ui[($page+'Nav')].Foreground=if($page -eq $Name){'#64E5CA'}else{'#A5B9D1'}
     }
     $titles=@{Overview='Your updates. Your call.';Details='A clear view of this PC.';Activity='Every step, accounted for.'}
-    $subtitles=@{Overview='Choose the right balance for this PC.';Details='Live service settings and scheduled watchdogs.';Activity='Progress, results and reports in one place.'}
+    $subtitles=@{Overview='Select a mode, review it, then apply when you are ready.';Details='Live service settings and scheduled watchdogs.';Activity='Progress, results and reports in one place.'}
     $script:Ui.PageTitle.Text=$titles[$Name]
     $script:Ui.PageSubtitle.Text=$subtitles[$Name]
     $script:Ui.MainScroll.ScrollToTop()
@@ -287,11 +322,16 @@ try {
     $script:Ui.DetailsNav.Add_Click({Show-Page 'Details'})
     $script:Ui.ActivityNav.Add_Click({Show-Page 'Activity'})
     $script:Ui.RefreshButton.Add_Click({Start-UiJob 'Status'})
-    $script:Ui.StoreButton.Add_Click({Start-UiJob 'Store'})
-    $script:Ui.RestoreButton.Add_Click({Start-UiJob 'Restore'})
-    $script:Ui.HardButton.Add_Click({$script:Ui.ConfirmOverlay.Visibility='Visible';$script:Ui.CancelHardButton.Focus()|Out-Null})
-    $script:Ui.CancelHardButton.Add_Click({$script:Ui.ConfirmOverlay.Visibility='Collapsed';$script:Ui.HardButton.Focus()|Out-Null})
-    $script:Ui.ConfirmHardButton.Add_Click({$script:Ui.ConfirmOverlay.Visibility='Collapsed';Start-UiJob 'Hard'})
+    foreach($name in @('StoreChoice','HardChoice','RestoreChoice')){
+        $script:Ui[$name].Add_Checked({param($sender,$eventArgs) Select-Mode ([string]$sender.Tag)})
+    }
+    $script:Ui.ApplyButton.Add_Click({Apply-SelectedMode})
+    $script:Ui.CancelHardButton.Add_Click({Close-HardConfirmation})
+    $script:Ui.ConfirmHardButton.Add_Click({
+        if($script:Ui.ConfirmOverlay.Visibility -ne 'Visible'){return}
+        Close-HardConfirmation
+        if(-not $script:ViewOnly -and -not $script:ActiveJob -and $script:LastStatus -and $script:SelectedMode -eq 'Hard'){Start-UiJob 'Hard'}
+    })
     $script:Ui.ReportButton.Add_Click({Start-UiJob 'Report'})
     $script:Ui.CopyButton.Add_Click({try{[Windows.Clipboard]::SetText($script:Ui.ActivityText.Text);$script:Ui.SavedPathText.Text='Activity copied to clipboard.'}catch{Show-Notice $_.Exception.Message}})
     $script:Ui.LogsButton.Add_Click({
@@ -299,7 +339,7 @@ try {
         if(Test-Path -LiteralPath $path){Start-Process explorer.exe -ArgumentList ('"{0}"' -f $path)|Out-Null}
         else{Show-Notice 'No saved operation logs yet. Logs and backups appear after a mode change.'}
     })
-    $script:Window.Add_PreviewKeyDown({param($sender,$eventArgs) if($eventArgs.Key -eq 'Escape' -and $script:Ui.ConfirmOverlay.Visibility -eq 'Visible'){$script:Ui.ConfirmOverlay.Visibility='Collapsed';$eventArgs.Handled=$true}})
+    $script:Window.Add_PreviewKeyDown({param($sender,$eventArgs) if($eventArgs.Key -eq 'Escape' -and $script:Ui.ConfirmOverlay.Visibility -eq 'Visible'){Close-HardConfirmation;$eventArgs.Handled=$true}})
     $script:Timer=New-Object Windows.Threading.DispatcherTimer
     $script:Timer.Interval=[TimeSpan]::FromMilliseconds(250)
     $script:Timer.Add_Tick({
@@ -324,6 +364,7 @@ try {
         $script:ViewOnly=$false
         $computer=[pscustomobject]@{OS='Windows 10 Pro';Build='19045';Edition='Professional';IsAdmin=$true}
         Update-StatusView (New-SampleStatus $PreviewMode) $computer
+        if($PreviewSelection -ne 'None'){$script:Ui[($PreviewSelection+'Choice')].IsChecked=$true}
         $script:Ui.AccessText.Text='Preview / no changes'
         $script:Ui.CheckedText.Text='Sample status'
         $script:Ui.OperationText.Text='Interface preview. No system settings changed.'
@@ -348,16 +389,78 @@ try {
             'PASS: actual hidden status worker, process completion, JSON result, and live status binding.'
             $script:ViewOnly=$false
             Update-StatusView (New-SampleStatus 'Store') $computer
+            Add-Type -AssemblyName UIAutomationProvider,UIAutomationTypes
             $script:TestActions=New-Object 'System.Collections.Generic.List[string]'
             function Start-UiJob([string]$JobAction){$script:TestActions.Add($JobAction)}
-            function Click-TestButton([string]$Name){$script:Ui[$Name].RaiseEvent((New-Object Windows.RoutedEventArgs([Windows.Controls.Button]::ClickEvent)))}
-            Click-TestButton 'StoreButton';Click-TestButton 'RestoreButton';Click-TestButton 'HardButton'
-            if($script:Ui.ConfirmOverlay.Visibility -ne 'Visible' -or $script:TestActions.Count -ne 2){throw 'Hard confirmation did not gate the action.'}
-            Click-TestButton 'CancelHardButton'
-            if($script:Ui.ConfirmOverlay.Visibility -ne 'Collapsed' -or $script:TestActions.Count -ne 2){throw 'Hard confirmation cancel failed.'}
-            Click-TestButton 'HardButton';Click-TestButton 'ConfirmHardButton'
-            if(($script:TestActions -join ',') -ne 'Store,Restore,Hard'){throw 'Mode button routing failed.'}
-            Click-TestButton 'DetailsNav'
+            function Invoke-TestButton([string]$Name){
+                $peer=[Windows.Automation.Peers.ButtonAutomationPeer]::new($script:Ui[$Name])
+                $provider=[Windows.Automation.Provider.IInvokeProvider]$peer.GetPattern([Windows.Automation.Peers.PatternInterface]::Invoke)
+                $provider.Invoke()
+                $script:Window.Dispatcher.Invoke([Action]{},[Windows.Threading.DispatcherPriority]::Background)
+            }
+            function Select-TestMode([string]$Mode){
+                $peer=[Windows.Automation.Peers.RadioButtonAutomationPeer]::new($script:Ui[($Mode+'Choice')])
+                $provider=[Windows.Automation.Provider.ISelectionItemProvider]$peer.GetPattern([Windows.Automation.Peers.PatternInterface]::SelectionItem)
+                $provider.Select()
+            }
+            function Assert-CardHitTarget([string]$Mode){
+                $root=$script:Ui.RenderRoot
+                $root.Measure([Windows.Size]::new(1160,810));$root.Arrange([Windows.Rect]::new(0,0,1160,810));$root.UpdateLayout()
+                $card=$script:Ui[($Mode+'Choice')]
+                foreach($point in @([Windows.Point]::new(10,10),[Windows.Point]::new($card.ActualWidth/2,56),[Windows.Point]::new($card.ActualWidth/2,$card.ActualHeight*0.65))){
+                    $position=$card.TranslatePoint($point,$root)
+                    $hit=[Windows.Media.VisualTreeHelper]::HitTest($root,$position)
+                    if(-not $hit){throw ('No hit target in '+$Mode+' card.')}
+                    $node=$hit.VisualHit
+                    while($node -and $node -isnot [Windows.Controls.RadioButton]){$node=[Windows.Media.VisualTreeHelper]::GetParent($node)}
+                    if($node -ne $card){throw ('Card heading/body/padding is not part of the selectable '+$Mode+' control.')}
+                }
+            }
+            function Assert-ApplyHitTarget([int]$Width,[int]$Height){
+                $root=$script:Ui.RenderRoot
+                $root.Measure([Windows.Size]::new($Width,$Height));$root.Arrange([Windows.Rect]::new(0,0,$Width,$Height));$root.UpdateLayout()
+                $button=$script:Ui.ApplyButton
+                $point=$button.TranslatePoint([Windows.Point]::new($button.ActualWidth/2,$button.ActualHeight/2),$root)
+                if($point.Y -ge $Height -or $point.X -ge $Width){throw 'Apply moved outside the visible window.'}
+                $hit=[Windows.Media.VisualTreeHelper]::HitTest($root,$point)
+                if(-not $hit){throw 'Apply has no visible pointer target.'}
+                $node=$hit.VisualHit
+                while($node -and $node -isnot [Windows.Controls.Button]){$node=[Windows.Media.VisualTreeHelper]::GetParent($node)}
+                if($node -ne $button){throw 'Another element covers the Apply button.'}
+            }
+            if($script:SelectedMode -or $script:Ui.ApplyButton.IsEnabled){throw 'No selection must keep Apply disabled.'}
+            foreach($mode in @('Store','Hard','Restore')){Assert-CardHitTarget $mode;Select-TestMode $mode}
+            if($script:TestActions.Count -ne 0 -or $script:LastStatus.Mode -ne 'Store'){throw 'Selecting a card changed Windows or the current-mode display.'}
+            Select-TestMode 'Hard'
+            Assert-ApplyHitTarget 1160 810
+            Assert-ApplyHitTarget 940 620
+            if(-not $script:Ui.HardChoice.IsChecked -or $script:Ui.RestoreChoice.IsChecked -or $script:Ui.StoreChoice.IsChecked){throw 'Mode choices are not mutually exclusive.'}
+            Invoke-TestButton 'ApplyButton'
+            if($script:Ui.ConfirmOverlay.Visibility -ne 'Visible' -or $script:Ui.AppContent.IsEnabled -or $script:TestActions.Count){throw 'Hard confirmation did not isolate the modal or gate the action.'}
+            Invoke-TestButton 'CancelHardButton'
+            if($script:Ui.ConfirmOverlay.Visibility -ne 'Collapsed' -or -not $script:Ui.AppContent.IsEnabled -or $script:TestActions.Count){throw 'Hard cancellation failed.'}
+            Select-TestMode 'Restore';Invoke-TestButton 'ApplyButton'
+            Select-TestMode 'Store';Invoke-TestButton 'ApplyButton'
+            Select-TestMode 'Hard';Invoke-TestButton 'ApplyButton';Invoke-TestButton 'ConfirmHardButton'
+            $script:Ui.ConfirmHardButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+            if(($script:TestActions -join ',') -ne 'Restore,Store,Hard'){throw 'Explicit Apply routing or duplicate-confirm prevention failed.'}
+            $script:ViewOnly=$true;Set-UiAvailability
+            Select-TestMode 'Restore'
+            $script:Ui.ApplyButton.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+            if($script:Ui.ApplyButton.IsEnabled -or $script:Ui.SelectionHint.Text -notmatch 'Read-only' -or $script:TestActions.Count -ne 3){throw 'Read-only mode did not explain and prevent changes.'}
+            $script:ViewOnly=$false;$script:ActiveJob=[pscustomobject]@{Action='Hard'};Set-UiAvailability
+            if($script:Ui.ApplyButton.IsEnabled -or $script:Ui.HardChoice.IsEnabled -or $script:Ui.SelectionHint.Text -notmatch 'running'){throw 'Busy operation controls are not disabled and explained.'}
+            $script:ActiveJob=[pscustomobject]@{Action='Status'};Set-UiAvailability
+            Select-TestMode 'Hard'
+            if($script:Ui.ApplyButton.IsEnabled -or -not $script:Ui.HardChoice.IsEnabled){throw 'Status refresh should allow selection but not applying.'}
+            $script:ActiveJob=$null;Set-UiAvailability
+            if($script:SelectedMode -ne 'Hard' -or -not $script:Ui.ApplyButton.IsEnabled){throw 'Status refresh lost the choice or left Apply disabled.'}
+            $script:StoreSupported=$false;Select-TestMode 'Store'
+            if($script:Ui.ApplyButton.IsEnabled -or $script:Ui.SelectionHint.Text -notmatch 'edition'){throw 'Unsupported Store mode needs an inline explanation.'}
+            Select-TestMode 'Restore'
+            if(-not $script:Ui.ApplyButton.IsEnabled){throw 'Unsupported Store mode incorrectly disabled Restore.'}
+            $script:StoreSupported=$true
+            Invoke-TestButton 'DetailsNav'
             if($script:Ui.DetailsPage.Visibility -ne 'Visible' -or $script:Ui.OverviewPage.Visibility -ne 'Collapsed'){throw 'Details navigation failed.'}
             $failure=[pscustomobject]@{Action='Restore';ExitCode=1;Error='Test deletion denied';LogPath=$null;Status=$null;Computer=$null}
             Show-JobResult $failure
@@ -365,9 +468,8 @@ try {
             $failure.ExitCode=3010
             Show-JobResult $failure
             if($script:Ui.ResultTitle.Text -ne 'Restart required'){throw 'Restart requirement was not displayed.'}
-            $script:ViewOnly=$true;Set-UiAvailability
-            if($script:Ui.StoreButton.IsEnabled -or $script:Ui.HardButton.IsEnabled -or $script:Ui.RestoreButton.IsEnabled){throw 'Read-only mode allowed actions.'}
-            'PASS: WPF loading, mode buttons, confirmation/cancel, navigation, errors, restart state, and read-only controls.'
+            'PASS: full-card and visible Apply hit targets, accessible selection and Apply, zero changes on selection/cancel, modal isolation, action routing, disabled reasons and selection preservation.'
+
         }
         if($PreviewPath){Export-UiPreview $PreviewPath;Write-Output $PreviewPath}
         exit 0

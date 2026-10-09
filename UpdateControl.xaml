@@ -31,6 +31,25 @@
       <Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Margin" Value="0,3"/><Setter Property="Padding" Value="14,12"/>
     </Style>
     <Style x:Key="Card" TargetType="Border"><Setter Property="Background" Value="#141F31"/><Setter Property="BorderBrush" Value="#2B3B51"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CornerRadius" Value="12"/><Setter Property="Padding" Value="21"/></Style>
+    <Style x:Key="ModeChoice" TargetType="RadioButton">
+      <Setter Property="Background" Value="#141F31"/><Setter Property="BorderBrush" Value="#34465F"/>
+      <Setter Property="Foreground" Value="#EDF3FA"/><Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="VerticalContentAlignment" Value="Stretch"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
+        <Border x:Name="ChoiceSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="2" CornerRadius="12" Padding="18">
+          <Grid>
+            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+            <Border x:Name="ChoiceRing" Width="20" Height="20" CornerRadius="10" BorderBrush="#7F99B8" BorderThickness="2" HorizontalAlignment="Right" VerticalAlignment="Top"><Ellipse x:Name="ChoiceDot" Width="10" Height="10" Fill="#4CE1BE" Visibility="Collapsed"/></Border>
+          </Grid>
+        </Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ChoiceSurface" Property="Background" Value="#1C2B42"/><Setter TargetName="ChoiceSurface" Property="BorderBrush" Value="#92B8DD"/></Trigger>
+          <Trigger Property="IsChecked" Value="True"><Setter TargetName="ChoiceSurface" Property="Background" Value="#123331"/><Setter TargetName="ChoiceSurface" Property="BorderBrush" Value="#4CE1BE"/><Setter TargetName="ChoiceRing" Property="BorderBrush" Value="#4CE1BE"/><Setter TargetName="ChoiceDot" Property="Visibility" Value="Visible"/></Trigger>
+          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ChoiceSurface" Property="BorderBrush" Value="White"/></Trigger>
+          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="ChoiceSurface" Property="Opacity" Value="0.45"/><Setter Property="Cursor" Value="Arrow"/></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
     <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource Button}">
       <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Width" Value="42"/><Setter Property="Padding" Value="0"/>
       <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
@@ -50,6 +69,7 @@
   </Window.Resources>
   <Border x:Name="RenderRoot" BorderBrush="#2B394E" BorderThickness="1" Background="#0B1120">
     <Grid>
+      <Grid x:Name="AppContent">
       <Grid.RowDefinitions><RowDefinition Height="44"/><RowDefinition Height="*"/></Grid.RowDefinitions>
       <Border Grid.Row="0" Background="#101827" BorderBrush="#253349" BorderThickness="0,0,0,1">
         <Grid Margin="18,0,5,0"><StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="TitleIcon" Width="22" Height="22" Margin="0,0,10,0"/><TextBlock Text="Update Control" Foreground="#C5D4E5" FontWeight="SemiBold" VerticalAlignment="Center"/><TextBlock Text=" /  Desktop edition" Foreground="#748BA6" Margin="8,0,0,0" VerticalAlignment="Center"/></StackPanel>
@@ -69,11 +89,11 @@
             <StackPanel DockPanel.Dock="Bottom">
               <Border Height="1" Background="#293A51" Margin="12,0,12,16"/>
               <TextBlock x:Name="AccessText" Text="Checking access" Foreground="#4CE1BE" FontWeight="SemiBold" FontSize="12" Margin="12,0,0,6"/>
-              <TextBlock Text="v4.2.1  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
+              <TextBlock Text="v4.2.2  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
             </StackPanel>
           </DockPanel>
         </Border>
-        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid Grid.Column="1"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <ScrollViewer x:Name="MainScroll" Padding="28,25,28,20">
             <StackPanel>
               <Grid Margin="0,0,0,21"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -88,36 +108,35 @@
               </Border>
               <Border x:Name="NoticePanel" CornerRadius="8" Background="#33291A" BorderBrush="#8D6931" BorderThickness="1" Padding="15,12" Margin="0,0,0,18" Visibility="Collapsed"><TextBlock x:Name="NoticeText" Foreground="#F3D89F"/></Border>
               <StackPanel x:Name="OverviewPage">
-                <Grid Margin="0,0,0,20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <Border Grid.Column="0" Style="{StaticResource Card}" BorderBrush="#3DC6A8" Background="#122A2B" Padding="20">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                      <TextBlock Text="RECOMMENDED" Foreground="#62E5C6" FontSize="10" FontWeight="Bold"/>
-                      <TextBlock Grid.Row="1" Text="Store Friendly" FontSize="23" FontWeight="SemiBold" Margin="0,14,0,10"/>
-                      <TextBlock Grid.Row="2" Text="Install apps like ChatGPT. Keep Windows updates manual." Foreground="#B6CECA" MinHeight="57" LineHeight="20"/>
-                      <StackPanel Grid.Row="3" Margin="0,15,0,20"><TextBlock Text="OS updates       Manual" Foreground="#CFEAE3" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="App downloads   Available" Foreground="#CFEAE3" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="Watchdogs        None" Foreground="#CFEAE3" FontSize="12"/></StackPanel>
-                      <Button x:Name="StoreButton" Grid.Row="4" Content="Use Store Friendly" Style="{StaticResource Button}" Background="#4CE1BE" Foreground="#08251F" BorderBrush="#4CE1BE" Padding="10,12"/>
-                    </Grid>
-                  </Border>
-                  <Border Grid.Column="2" Style="{StaticResource Card}" Padding="20">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                      <TextBlock Text="STRICT CONTROL" Foreground="#D6AAB7" FontSize="10" FontWeight="Bold"/>
-                      <TextBlock Grid.Row="1" Text="Hard Block" FontSize="23" FontWeight="SemiBold" Margin="0,14,0,10"/>
-                      <TextBlock Grid.Row="2" Text="Stop the shared update services. Store downloads stop too." Foreground="{StaticResource Muted}" MinHeight="57" LineHeight="20"/>
-                      <StackPanel Grid.Row="3" Margin="0,15,0,20"><TextBlock Text="OS services      Disabled" Foreground="#B8C8DB" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="App downloads   Blocked" Foreground="#E0B6C0" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="Watchdogs        One" Foreground="#B8C8DB" FontSize="12"/></StackPanel>
-                      <Button x:Name="HardButton" Grid.Row="4" Content="Apply Hard Block" Style="{StaticResource Button}" Padding="10,12"/>
-                    </Grid>
-                  </Border>
-                  <Border Grid.Column="4" Style="{StaticResource Card}" Padding="20">
-                    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                      <TextBlock Text="BACK TO NORMAL" Foreground="#9EBFF0" FontSize="10" FontWeight="Bold"/>
-                      <TextBlock Grid.Row="1" Text="Restore" FontSize="23" FontWeight="SemiBold" Margin="0,14,0,10"/>
-                      <TextBlock Grid.Row="2" Text="Remove the blocker and restore your saved Windows settings." Foreground="{StaticResource Muted}" MinHeight="57" LineHeight="20"/>
-                      <StackPanel Grid.Row="3" Margin="0,15,0,20"><TextBlock Text="OS settings      Restored" Foreground="#B8C8DB" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="App downloads   Re-enabled*" Foreground="#B8C8DB" FontSize="12" Margin="0,0,0,8"/><TextBlock Text="Watchdogs        Removed" Foreground="#B8C8DB" FontSize="12"/></StackPanel>
-                      <Button x:Name="RestoreButton" Grid.Row="4" Content="Restore Windows" Style="{StaticResource Button}" Padding="10,12"/>
-                    </Grid>
-                  </Border>
+                <TextBlock Text="1  Select a mode" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                <TextBlock Text="Click anywhere on a card. Selecting a mode does not change Windows." Foreground="{StaticResource Muted}" FontSize="12" Margin="0,0,0,14"/>
+                <Grid Margin="0,0,0,16" KeyboardNavigation.DirectionalNavigation="Contained"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                  <RadioButton x:Name="StoreChoice" Tag="Store" GroupName="UpdateMode" Grid.Column="0" Style="{StaticResource ModeChoice}" AutomationProperties.Name="Store Friendly" AutomationProperties.HelpText="Select this mode. Use Apply Store Friendly to change Windows." ToolTip="Select Store Friendly; Windows stays unchanged until you apply.">
+                    <StackPanel>
+                      <TextBlock Text="RECOMMENDED" Foreground="#62E5C6" FontSize="10" FontWeight="Bold" Margin="0,0,30,0"/>
+                      <TextBlock Text="Store Friendly" FontSize="22" FontWeight="SemiBold" Margin="0,16,0,10"/>
+                      <TextBlock Text="Keep automatic Windows updates manual while installing Store apps." Foreground="{StaticResource Muted}" MinHeight="55" LineHeight="19"/>
+                      <StackPanel Margin="0,14,0,0"><TextBlock Text="OS updates       Manual" Foreground="#C6D8E8" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="App downloads   Available" Foreground="#C6D8E8" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="Watchdogs        None" Foreground="#C6D8E8" FontSize="12"/></StackPanel>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="HardChoice" Tag="Hard" GroupName="UpdateMode" Grid.Column="2" Style="{StaticResource ModeChoice}" AutomationProperties.Name="Hard Block" AutomationProperties.HelpText="Select this mode. Review and confirm Hard Block separately." ToolTip="Select Hard Block to review it. Nothing changes until you apply and confirm.">
+                    <StackPanel>
+                      <TextBlock Text="STRICT CONTROL" Foreground="#D6AAB7" FontSize="10" FontWeight="Bold" Margin="0,0,30,0"/>
+                      <TextBlock Text="Hard Block" FontSize="22" FontWeight="SemiBold" Margin="0,16,0,10"/>
+                      <TextBlock Text="Stop shared update services. Store downloads can stop too." Foreground="{StaticResource Muted}" MinHeight="55" LineHeight="19"/>
+                      <StackPanel Margin="0,14,0,0"><TextBlock Text="OS services      Disabled" Foreground="#C6D8E8" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="App downloads   Restricted" Foreground="#E0B6C0" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="Watchdogs        One" Foreground="#C6D8E8" FontSize="12"/></StackPanel>
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton x:Name="RestoreChoice" Tag="Restore" GroupName="UpdateMode" Grid.Column="4" Style="{StaticResource ModeChoice}" AutomationProperties.Name="Restore Windows" AutomationProperties.HelpText="Select restoration. Use Restore Windows to remove this tool's settings." ToolTip="Select Restore; your current settings stay in place until you apply.">
+                    <StackPanel>
+                      <TextBlock Text="BACK TO NORMAL" Foreground="#9EBFF0" FontSize="10" FontWeight="Bold" Margin="0,0,30,0"/>
+                      <TextBlock Text="Restore" FontSize="22" FontWeight="SemiBold" Margin="0,16,0,10"/>
+                      <TextBlock Text="Remove this tool's block and restore your saved Windows settings." Foreground="{StaticResource Muted}" MinHeight="55" LineHeight="19"/>
+                      <StackPanel Margin="0,14,0,0"><TextBlock Text="OS settings      Restored" Foreground="#C6D8E8" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="App downloads   Re-enabled*" Foreground="#C6D8E8" FontSize="12" Margin="0,0,0,7"/><TextBlock Text="Watchdogs        Removed" Foreground="#C6D8E8" FontSize="12"/></StackPanel>
+                    </StackPanel>
+                  </RadioButton>
                 </Grid>
-                <Border Background="#121B2B" CornerRadius="10" Padding="18,15"><StackPanel><TextBlock Text="A good fit for app installs" FontWeight="SemiBold"/><TextBlock Text="Store Friendly supports Pro, Enterprise, Education and IoT Enterprise. It does not cancel updates already pending. *Other software or organization policies can still restrict downloads." Foreground="{StaticResource Muted}" Margin="0,6,0,0" FontSize="12" LineHeight="18"/></StackPanel></Border>
+                <TextBlock Text="Store Friendly: Pro, Enterprise, Education and IoT Enterprise. Pending updates are not cancelled. *Other software or organization policies may still restrict downloads." Foreground="{StaticResource Muted}" FontSize="11" LineHeight="17" Margin="1,0,1,0"/>
               </StackPanel>
               <StackPanel x:Name="DetailsPage" Visibility="Collapsed">
                 <Border Style="{StaticResource Card}" Margin="0,0,0,16"><StackPanel><TextBlock Text="Update &amp; app services" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,6"/><TextBlock Text="A stopped Manual service can start when Windows needs it. Disabled means it cannot start." Foreground="{StaticResource Muted}" Margin="0,0,0,18" FontSize="12"/><DataGrid x:Name="ServicesGrid"><DataGrid.Columns><DataGridTextColumn Header="Service" Binding="{Binding Name}" Width="*" MinWidth="230"/><DataGridTextColumn Header="State" Binding="{Binding State}" Width="140"/><DataGridTextColumn Header="Startup" Binding="{Binding Startup}" Width="140"/></DataGrid.Columns></DataGrid></StackPanel></Border>
@@ -129,12 +148,19 @@
               <Border x:Name="ResultPanel" Style="{StaticResource Card}" Margin="0,18,0,0" Visibility="Collapsed"><StackPanel><TextBlock x:Name="ResultTitle" Text="" FontSize="18" FontWeight="SemiBold"/><TextBlock x:Name="ResultMessage" Text="" Foreground="#B4C7DD" Margin="0,7,0,0" LineHeight="20"/></StackPanel></Border>
             </StackPanel>
           </ScrollViewer>
-          <Border Grid.Row="1" Background="#101A2B" BorderBrush="#293A50" BorderThickness="0,1,0,0" Padding="27,14">
+                <Border x:Name="SelectionPanel" Grid.Row="1" Background="#152235" BorderBrush="#354C68" BorderThickness="1" CornerRadius="10" Padding="18,15" Margin="28,0,28,12">
+                  <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock x:Name="SelectionTitle" Text="2  Apply your selection" FontSize="16" FontWeight="SemiBold"/><TextBlock x:Name="SelectionHint" Text="Select a card above to continue." Foreground="#AEC2DA" FontSize="12" Margin="0,6,14,0" LineHeight="18"/></StackPanel>
+                    <Button x:Name="ApplyButton" Grid.Column="1" Content="Select a mode" Style="{StaticResource Button}" Background="#4CE1BE" Foreground="#08251F" BorderBrush="#4CE1BE" MinWidth="206" VerticalAlignment="Center" ToolTipService.ShowOnDisabled="True"/>
+                  </Grid>
+                </Border>
+          <Border Grid.Row="2" Background="#101A2B" BorderBrush="#293A50" BorderThickness="0,1,0,0" Padding="27,14">
             <StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock x:Name="OperationText" Text="Connecting to the local controller..." Foreground="#BED0E6" FontSize="12"/><TextBlock x:Name="SystemText" Grid.Column="1" Foreground="#7F98B5" FontSize="11" Margin="15,0,0,0"/></Grid><ProgressBar x:Name="ProgressBar" Height="3" Margin="0,10,0,0" Background="#263750" Foreground="#4CE1BE" BorderThickness="0" IsIndeterminate="True"/></StackPanel>
           </Border>
         </Grid>
       </Grid>
-      <Border x:Name="ConfirmOverlay" Grid.RowSpan="2" Background="#CC060B14" Visibility="Collapsed">
+      </Grid>
+      <Border x:Name="ConfirmOverlay" KeyboardNavigation.TabNavigation="Cycle" Background="#CC060B14" Visibility="Collapsed">
         <Border Style="{StaticResource Card}" Width="440" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30" BorderBrush="#8B5C6D"><StackPanel><TextBlock Text="Apply Hard Block?" FontSize="26" FontWeight="SemiBold"/><TextBlock Text="This stops Windows update services and prevents Microsoft Store downloads, including ChatGPT. Automatic OS security updates also stop." Margin="0,16,0,0" Foreground="#C3CDDC" LineHeight="22"/><TextBlock Text="You can switch back with Store Friendly or Restore." Margin="0,12,0,24" Foreground="#9BB2CA"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Button x:Name="CancelHardButton" Content="Keep current mode" Style="{StaticResource Button}" Padding="10,12"/><Button x:Name="ConfirmHardButton" Grid.Column="2" Content="Apply Hard Block" Style="{StaticResource Button}" Background="#944B63" BorderBrush="#BC708A" Padding="10,12"/></Grid></StackPanel></Border>
       </Border>
     </Grid>

@@ -2,7 +2,7 @@
 
 ## Store says “Turn on Windows Update”
 
-Open Update Control, choose **Restore Windows**, and follow any restart message. Reopen the controller and choose **Use Store Friendly** on a supported edition. This keeps shared services available while setting automatic Windows updates to manual policy. Close and reopen Microsoft Store. If it retains an old error, run `wsreset.exe` from Win+R.
+Open Update Control, select the **Restore** card, click **Restore Windows**, and follow any restart message. Reopen the controller, select **Store Friendly**, then click **Apply Store Friendly** on a supported edition. This keeps shared services available while setting automatic Windows updates to manual policy. Close and reopen Microsoft Store. If it retains an old error, run `wsreset.exe` from Win+R.
 
 Do not keep Hard Block enabled while expecting Store downloads to work. Other causes, such as account, network, organization policy or Store damage, are outside this controller's repair scope.
 
@@ -11,6 +11,14 @@ Do not keep Hard Block enabled while expecting Store downloads to work. Other ca
 The new controller looks in every Task Scheduler folder for both `WU-Guardian*` and `POS-WU-Guardian*` families, but matches only the explicit names listed in the README. It disarms enforcement, then separately tries disable, stop and deletion. If deletion still fails, it reports **Needs attention** and includes a log path.
 
 Use **Activity → Open logs** and create a diagnostic report. Confirm you opened the controller with administrator access. Rerun Restore after resolving the reported error. Do not delete the data folder while a guardian is still active. Tasks with custom names are not automatically deleted.
+
+## Mode cards or Apply seem unresponsive
+
+In 4.2.2, click anywhere on a card to select it. The outline and radio marker change, and the bottom action button names the selected action. Selecting alone does not change the **Current mode** panel; only applying and successfully completing a change does that.
+
+Read the message beside Apply if it is disabled: no selection, read-only access, an operation in progress, unavailable status, or an unsupported Windows edition. During a status refresh you can still choose a card; applying waits for the refresh. During a settings change, the choices and action are disabled together. The button stays visible while the content scrolls.
+
+The older 4.2.1 layout used static cards with separate small buttons. Close that version and open the current EXE if you still see those individual card buttons. If an enabled action still does nothing, report its exact label and the Activity text.
 
 ## Restart required
 
@@ -34,7 +42,7 @@ For a WPF startup failure, check `%TEMP%\Update-Control-GUI-error.txt` and try t
 
 ## Remove the application
 
-1. Open it and select **Restore Windows**. Wait for success and follow any restart message.
+1. Open it, select the **Restore** card and click **Restore Windows**. Wait for success and follow any restart message.
 2. Verify that the watchdog count is zero.
 3. Close the application. You can then delete the downloaded EXE/ZIP and the application component folder under `%ProgramFiles%\Kareer Update Control`.
 4. Keep the ProgramData logs/backups until you have verified normal operation. Deleting the EXE alone does not disable an installed Hard Block watchdog.

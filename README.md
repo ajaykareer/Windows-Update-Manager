@@ -6,7 +6,9 @@
 
 A Windows desktop interface for controlling automatic OS updates, keeping Microsoft Store available, and removing this tool's blocker reliably.
 
-**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.2/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.2/Update-Control-Desktop-v4.2.2.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2)
+> **Security notice — 2026-10-09:** Microsoft Defender detected a file named `Update-Control 4.2.2.exe` as `Trojan:Win32/Sabsik.FL.A!ml` on a user's PC. The affected copy's hash and the cause are not yet verified; a false positive has not been established. **Do not run or allow the reported build while this remains unresolved.** The earlier negative scan is historical evidence, not clearance. Read the [notice and containment steps](docs/SECURITY-NOTICE.md).
+
+[Release status and historical assets](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2) — neither the portable scripts nor older releases are a verified workaround for this detection.
 
 Version 4.2.2 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
 
@@ -15,6 +17,8 @@ Version 4.2.2 is a preview release. See [validation and limitations](docs/VALIDA
 *Actual WPF interface rendered with sample status. The screenshot is not proof of a live Windows Update block.*
 
 ## Start here
+
+**Usage instructions below describe the preview's interface. They are on hold pending resolution of the [reported Defender detection](docs/SECURITY-NOTICE.md). Do not use the EXE or script launchers to bypass that detection.**
 
 1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
 2. If you used the old script, click the **Restore** card, then **Restore Windows**. Follow any restart message.
@@ -67,6 +71,7 @@ System details shows service and task status. Activity provides progress, logs, 
 
 ## Documentation
 
+- [Reported Defender detection and containment steps](docs/SECURITY-NOTICE.md)
 - [Build and package from source](docs/BUILD.md)
 - [Publisher signing and Windows security warnings](docs/SIGNING.md)
 - [Validation coverage and known limitations](docs/VALIDATION.md)
@@ -76,7 +81,7 @@ System details shows service and task status. Activity provides progress, logs, 
 
 Windows 10/11 desktop, Windows PowerShell 5.1, administrator access for changes. Store Friendly supports Pro, Enterprise, Education and IoT Enterprise. This project does not change your Windows edition's lifecycle or security support.
 
-Data and backups: `%ProgramData%\POSUpdateControl`. Legacy repair backups: `%ProgramData%\POS_WU_Repair`. Restore before deleting the application or its data.
+Data and backups: `%ProgramData%\POSUpdateControl`. Legacy repair backups: `%ProgramData%\POS_WU_Repair`. Preserve these backups during investigation. If security software has flagged the application, follow the containment notice instead of launching it to run Restore.
 
 ## Policy references
 

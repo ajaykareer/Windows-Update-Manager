@@ -1,5 +1,7 @@
 # Publisher identity, Windows warnings and false positives
 
+**Current status:** a Defender detection associated with the 4.2.2 filename was reported on 2026-10-09. It has not been established to be a false positive. Follow the [security notice](SECURITY-NOTICE.md); signing is not a resolution of this detection.
+
 The public 4.2.2 preview is **unsigned**. The author/company fields and custom icon are application metadata, not a verified publisher signature. No certificate is bundled and the build does not install a trust root, add an antivirus exclusion, or switch off security checks.
 
 Three different prompts can appear:
@@ -8,7 +10,7 @@ Three different prompts can appear:
 | --- | --- | --- |
 | UAC administrator prompt | The app requests permission to manage services, policies and scheduled tasks | Expected for this application; publisher signing can identify the author but does not remove the need for elevation |
 | SmartScreen / unrecognized app / unknown publisher | File or publisher identity/reputation is not established | Use a publicly trusted signing identity and a consistent release channel; a new signed file may still warn |
-| Antivirus threat detection | The security product identified a specific threat or unwanted behavior | Record the exact detection and file hash, review the source, and submit an incorrect detection to the vendor for analysis |
+| Antivirus threat detection | The security product identified a specific threat or unwanted behavior | Keep the file quarantined; record the detection and available evidence, review the source, and request vendor analysis without assuming the classification is incorrect |
 
 An icon, a hash, a clean scan, or a signature cannot guarantee that every security product will accept the file. Changing update services and creating a SYSTEM guardian are deliberate, documented administrator functions. The launcher transparently embeds a ZIP of readable source scripts and runs Windows PowerShell. It uses a process-scoped execution-policy argument for those scripts; it does not change the machine's execution policy or disable Defender/AMSI. Corporate application-control policy can still block it.
 
@@ -32,11 +34,11 @@ Sign **after** the build and publish those exact signed bytes. Rebuilding or edi
 
 No actual publisher-signing run has been performed for this preview because no suitable certificate is available. Syntax and preflight handling are checked; the certificate-backed path needs the publisher's credentials and provider.
 
-## Scan and report an incorrect detection
+## Scan and request analysis of a detection
 
 Use the installed security product to scan the exact release and record the result, signature version, date and SHA-256. A local scan is a point-in-time result, not certification or a SmartScreen reputation check. This project does not alter a binary in response to detection results to conceal its behavior.
 
-Microsoft accepts developer submissions of incorrectly classified files at its Security Intelligence portal. Include the detected product/name, exact hash, repository link, and explanation of the user-selected update controls. A submission is not a promise of acceptance; review and classification remain with the vendor.
+Microsoft accepts developer submissions of suspicious files and suspected incorrect detections at its Security Intelligence portal. Include the detected product/name, exact hash when available, repository link, and explanation of the user-selected update controls. Distinguish the affected copy from the published release if their hashes have not been compared. Do not restore a quarantined sample just to calculate its hash or execute it. A submission is not a promise of acceptance; review and classification remain with the vendor.
 
 Official references:
 

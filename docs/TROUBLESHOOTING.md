@@ -1,5 +1,9 @@
 # Troubleshooting
 
+## Defender detection reported for 4.2.2
+
+**Follow the [security notice](SECURITY-NOTICE.md) before the normal troubleshooting instructions below.** Do not open the EXE, use a script launcher, or use an older build to work around a detection. If Hard Block was applied, disabling and ending its separate watchdog stops enforcement but does not restore services or policy. Preserve the baseline for recovery without executing the flagged application.
+
 ## Store says “Turn on Windows Update”
 
 Open Update Control, select the **Restore** card, click **Restore Windows**, and follow any restart message. Reopen the controller, select **Store Friendly**, then click **Apply Store Friendly** on a supported edition. This keeps shared services available while setting automatic Windows updates to manual policy. Close and reopen Microsoft Store. If it retains an old error, run `wsreset.exe` from Win+R.

@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.2.2 — Clear mode selection and Apply
+
+- Replaces static mode cards with full-card radio controls: heading, description and padding all select the option.
+- Separates the pending selection from the current Windows mode. Selection and cancellation never execute a controller action.
+- Adds one action bar that stays visible in small windows, with a clear selected-mode label and explicit reasons when Apply is unavailable.
+- Keeps selection during automatic status refreshes and supports reviewing choices with read-only access.
+- Isolates the Hard Block confirmation from the underlying page and ignores duplicate confirmation events after it closes.
+- Adds hit-target and accessibility-provider interaction tests plus updated screenshots and usage instructions. The controller's update/restore behavior is unchanged.
+
 ## 4.2.1 — Icon and publisher-signing preparation
 
 - Adds an original update/pause icon with seven Windows icon sizes and a reusable 1024 pixel PNG; applies it to the EXE, window/taskbar icon, title bar and sidebar.

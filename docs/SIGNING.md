@@ -1,6 +1,6 @@
 # Publisher identity, Windows warnings and false positives
 
-The public 4.2.1 preview is **unsigned**. The author/company fields and custom icon are application metadata, not a verified publisher signature. No certificate is bundled and the build does not install a trust root, add an antivirus exclusion, or switch off security checks.
+The public 4.2.2 preview is **unsigned**. The author/company fields and custom icon are application metadata, not a verified publisher signature. No certificate is bundled and the build does not install a trust root, add an antivirus exclusion, or switch off security checks.
 
 Three different prompts can appear:
 

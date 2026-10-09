@@ -6,7 +6,7 @@ $repo=Split-Path $PSScriptRoot -Parent
 $dist=Join-Path $repo 'dist'
 $build=Join-Path $dist 'build'
 New-Item -ItemType Directory -Path $build -Force | Out-Null
-$version='4.2.1'
+$version='4.2.2'
 $files=@('Update-Control.cmd','Update-Control-Console.cmd','WindowsUpdateManager.bat','WU-ManagerFinal.bat',
     'UpdateControl.GUI.ps1','UpdateControl.xaml','UpdateControl.Worker.ps1','UpdateControl.ps1',
     'Repair-WindowsStore.ps1','Repair-WindowsStore.cmd','Diagnose-WindowsStore.cmd','READ-ME-FIRST.txt','LICENSE','Update-Control.ico')

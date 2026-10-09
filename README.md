@@ -6,9 +6,9 @@
 
 A Windows desktop interface for controlling automatic OS updates, keeping Microsoft Store available, and removing this tool's blocker reliably.
 
-**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.1/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.1/Update-Control-Desktop-v4.2.1.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.1)
+**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.2/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.2/Update-Control-Desktop-v4.2.2.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2)
 
-Version 4.2.1 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
+Version 4.2.2 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
 
 ![Update Control desktop overview](docs/screenshots/overview.png)
 
@@ -17,9 +17,11 @@ Version 4.2.1 is a preview release. See [validation and limitations](docs/VALIDA
 ## Start here
 
 1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
-2. If you used the old script, select **Restore Windows** first. Follow any restart message.
-3. Select **Use Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
-4. Select **Restore Windows** whenever you want to remove this tool's block.
+2. If you used the old script, click the **Restore** card, then **Restore Windows**. Follow any restart message.
+3. Click the **Store Friendly** card, then **Apply Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
+4. To remove the block later, select the **Restore** card and apply it.
+
+The entire card is clickable. Its outline and radio marker show your selection; Windows changes only after you press the separate action button. Hard Block adds a confirmation step. The **Current mode** panel shows the saved configuration, independently of the option you are considering.
 
 You download one EXE. It automatically extracts its embedded components into a protected version folder under `%ProgramFiles%\Kareer Update Control`. It uses Windows PowerShell 5.1 and .NET Framework already present on standard Windows 10/11 desktop installations. It does not require Python, Node, or a separate setup wizard.
 
@@ -55,7 +57,9 @@ Exact original-setting restoration applies to changes first made by version 4. T
 
 ## Interface
 
-Overview shows the selected mode, watchdog count and available actions. System details shows service and task status. Activity provides progress, logs, backups, and diagnostic reports. Hard Block has a confirmation dialog; failure and restart results are distinct. No restart or Windows Update scan is issued automatically.
+Overview separates the current mode from your pending selection. Click any part of a mode card, then use the action bar that stays visible at the bottom. Radio controls support keyboard and accessibility navigation. Read-only access, a running operation, missing status and an unsupported Store edition explain why Apply is unavailable. Selections survive automatic status refreshes.
+
+System details shows service and task status. Activity provides progress, logs, backups, and diagnostic reports. Hard Block has a confirmation dialog that prevents interaction with the underlying page until you confirm or cancel. Failure and restart results are distinct. No restart or Windows Update scan is issued automatically.
 
 | System details | Activity and recovery |
 | --- | --- |

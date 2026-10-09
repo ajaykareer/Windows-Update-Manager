@@ -41,7 +41,7 @@ jobs:
           name: Update-Control-Windows
           path: |
             dist/Update-Control.exe
-            dist/Update-Control-Desktop-v4.2.1.zip
+            dist/Update-Control-Desktop-v4.2.2.zip
             dist/Update-Control.ico
             dist/Update-Control.png
             dist/SHA256SUMS.txt

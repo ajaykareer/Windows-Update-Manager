@@ -15,8 +15,8 @@ using System.Windows.Forms;
 [assembly: AssemblyCompany("Ajay Kareer")]
 [assembly: AssemblyProduct("Update Control Desktop")]
 [assembly: AssemblyCopyright("Copyright (c) Ajay Kareer. MIT licensed.")]
-[assembly: AssemblyVersion("4.2.1.0")]
-[assembly: AssemblyFileVersion("4.2.1.0")]
+[assembly: AssemblyVersion("4.2.2.0")]
+[assembly: AssemblyFileVersion("4.2.2.0")]
 
 internal static class Program
 {

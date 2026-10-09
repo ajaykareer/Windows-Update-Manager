@@ -1,6 +1,6 @@
 # Validation and limits
 
-Version 4.2.1 is a preview. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine.
+Version 4.2.2 is a preview. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine.
 
 See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml) for the result on each commit. The release packages should come from a successful run for the release commit.
 
@@ -9,7 +9,7 @@ See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manag
 | Controller regression suite | Hard → Store → Restore, repeated restore, absent/original policy, immutable baseline, failure rollback, corrupt state, real file locks and atomic replacement | Actual Windows Update service permissions or OS policy enforcement |
 | Watchdog removal regression | Both legacy naming families; all task folders; independent disable/stop/delete attempts; CLI fallback; remaining tasks fail explicitly | Every third-party task or renamed/custom blocker |
 | Repair regression suite | Exact known policy/ACL cleanup, unrelated policy preservation, service fallback errors, backup and teardown ordering | Exact pre-script permissions that old releases never recorded |
-| WPF smoke test | Actual status worker, completion code/result delivery, mode routing, confirmation/cancel, navigation, read-only controls, error/restart presentation | A real privileged button click on a consumer PC |
+| WPF smoke test | Actual status worker, card heading/body/padding hit targets, unobstructed Apply target at standard/minimum sizes, accessibility selection/invocation, no changes on selection/cancel, action routing, modal isolation, disabled-state reasons and selection persistence | Physical pointer/keyboard input or a real privileged button click on the affected PC |
 | Interface previews | Real WPF rendering with sample status, including smaller window layouts | A screenshot of successful live blocking |
 | Windows API integration | Actual temporary services, protected state/engine ACLs, scheduled SYSTEM task, drift correction, startup-setting restoration and task deletion | Client Windows Update, Medic behavior, reboot persistence, MDM or Store app installation |
 | EXE/ZIP verification | Embedded SHA-256, exact source-to-package comparison, real elevated extraction and cached second launch in CI | Publisher signing, SmartScreen reputation or antivirus acceptance |

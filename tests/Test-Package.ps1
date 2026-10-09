@@ -3,7 +3,7 @@ param([switch]$Extract)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $exe=Join-Path $repo 'dist\Update-Control.exe'
-$zip=Join-Path $repo 'dist\Update-Control-Desktop-v4.2.1.zip'
+$zip=Join-Path $repo 'dist\Update-Control-Desktop-v4.2.2.zip'
 $assembly=[Reflection.Assembly]::Load([IO.File]::ReadAllBytes($exe))
 $resource=$assembly.GetManifestResourceStream('UpdateControl.Payload.zip')
 $buffer=New-Object IO.MemoryStream

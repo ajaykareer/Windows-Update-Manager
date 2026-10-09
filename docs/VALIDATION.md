@@ -1,6 +1,6 @@
 # Validation and limits
 
-Version 4.2.0 is a preview. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine.
+Version 4.2.1 is a preview. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine.
 
 See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml) for the result on each commit. The release packages should come from a successful run for the release commit.
 

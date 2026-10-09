@@ -1,12 +1,14 @@
 # Update Control Desktop
 
+<img src="assets/Update-Control.png" width="96" height="96" alt="Update Control: circular update arrows around a pause symbol">
+
 [![Windows validation](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml/badge.svg)](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml)
 
 A Windows desktop interface for controlling automatic OS updates, keeping Microsoft Store available, and removing this tool's blocker reliably.
 
-**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.0/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.0/Update-Control-Desktop-v4.2.0.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.0)
+**[Download the single EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.1/Update-Control.exe)** · **[Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.2.1/Update-Control-Desktop-v4.2.1.zip)** · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.1)
 
-Version 4.2.0 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
+Version 4.2.1 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
 
 ![Update Control desktop overview](docs/screenshots/overview.png)
 
@@ -62,6 +64,7 @@ Overview shows the selected mode, watchdog count and available actions. System d
 ## Documentation
 
 - [Build and package from source](docs/BUILD.md)
+- [Publisher signing and Windows security warnings](docs/SIGNING.md)
 - [Validation coverage and known limitations](docs/VALIDATION.md)
 - [Troubleshooting and removing the application](docs/TROUBLESHOOTING.md)
 - [Changes in this release](CHANGELOG.md)

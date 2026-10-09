@@ -1,0 +1,20 @@
+<DrawingImage xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+  <DrawingImage.Drawing>
+    <DrawingGroup>
+      <GeometryDrawing Geometry="M 56,8 L 200,8 Q 248,8 248,56 L 248,200 Q 248,248 200,248 L 56,248 Q 8,248 8,200 L 8,56 Q 8,8 56,8 Z">
+        <GeometryDrawing.Brush><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#263B55" Offset="0"/><GradientStop Color="#0B1527" Offset="0.65"/><GradientStop Color="#102D39" Offset="1"/></LinearGradientBrush></GeometryDrawing.Brush>
+        <GeometryDrawing.Pen><Pen Brush="#38516D" Thickness="2"/></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <GeometryDrawing Geometry="M 60,128 A 68,68 0 0 1 170,75">
+        <GeometryDrawing.Pen><Pen Thickness="17" StartLineCap="Round" EndLineCap="Round"><Pen.Brush><LinearGradientBrush StartPoint="0,1" EndPoint="1,0"><GradientStop Color="#20ADA9" Offset="0"/><GradientStop Color="#72F5D3" Offset="1"/></LinearGradientBrush></Pen.Brush></Pen></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <GeometryDrawing Brush="#72F5D3" Geometry="M 180,53 L 184,94 L 144,85 Z"/>
+      <GeometryDrawing Geometry="M 196,128 A 68,68 0 0 1 86,181">
+        <GeometryDrawing.Pen><Pen Thickness="17" StartLineCap="Round" EndLineCap="Round"><Pen.Brush><LinearGradientBrush StartPoint="1,0" EndPoint="0,1"><GradientStop Color="#20ADA9" Offset="0"/><GradientStop Color="#72F5D3" Offset="1"/></LinearGradientBrush></Pen.Brush></Pen></GeometryDrawing.Pen>
+      </GeometryDrawing>
+      <GeometryDrawing Brush="#72F5D3" Geometry="M 76,203 L 72,162 L 112,171 Z"/>
+      <GeometryDrawing Brush="#EDF9FF"><GeometryDrawing.Geometry><RectangleGeometry Rect="103,103,17,50" RadiusX="5" RadiusY="5"/></GeometryDrawing.Geometry></GeometryDrawing>
+      <GeometryDrawing Brush="#EDF9FF"><GeometryDrawing.Geometry><RectangleGeometry Rect="136,103,17,50" RadiusX="5" RadiusY="5"/></GeometryDrawing.Geometry></GeometryDrawing>
+    </DrawingGroup>
+  </DrawingImage.Drawing>
+</DrawingImage>

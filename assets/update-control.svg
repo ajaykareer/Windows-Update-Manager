@@ -1,1 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="48" fill="#101827"/><path d="M128 38 204 70v57c0 46-40 78-76 94-36-16-76-48-76-94V70Z" fill="#14392f" stroke="#4ce1be" stroke-width="9" stroke-linejoin="round"/><path d="m86 126 29 29 56-62" fill="none" stroke="#4ce1be" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="7 7 242 242" role="img" aria-label="Update Control: update arrows with pause">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#263B55"/><stop offset=".65" stop-color="#0B1527"/><stop offset="1" stop-color="#102D39"/></linearGradient><linearGradient id="top" x1="0" y1="1" x2="1" y2="0"><stop stop-color="#20ADA9"/><stop offset="1" stop-color="#72F5D3"/></linearGradient><linearGradient id="bottom" x1="1" y1="0" x2="0" y2="1"><stop stop-color="#20ADA9"/><stop offset="1" stop-color="#72F5D3"/></linearGradient></defs>
+<rect x="8" y="8" width="240" height="240" rx="48" fill="url(#bg)" stroke="#38516D" stroke-width="2"/>
+<path d="M60 128 A68 68 0 0 1 170 75" fill="none" stroke="url(#top)" stroke-width="17" stroke-linecap="round"/>
+<path d="M180 53 L184 94 L144 85Z" fill="#72F5D3"/>
+<path d="M196 128 A68 68 0 0 1 86 181" fill="none" stroke="url(#bottom)" stroke-width="17" stroke-linecap="round"/>
+<path d="M76 203 L72 162 L112 171Z" fill="#72F5D3"/>
+<g fill="#EDF9FF"><rect x="103" y="103" width="17" height="50" rx="5"/><rect x="136" y="103" width="17" height="50" rx="5"/></g></svg>

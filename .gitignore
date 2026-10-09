@@ -5,3 +5,6 @@ tests/runs/
 *.user
 *.suo
 .vs/
+*.pfx
+*.p12
+*.key

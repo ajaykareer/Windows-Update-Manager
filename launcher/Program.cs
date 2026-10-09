@@ -14,14 +14,15 @@ using System.Windows.Forms;
 [assembly: AssemblyDescription("Windows update controls with Store Friendly mode and verified restore")]
 [assembly: AssemblyCompany("Ajay Kareer")]
 [assembly: AssemblyProduct("Update Control Desktop")]
-[assembly: AssemblyVersion("4.2.0.0")]
-[assembly: AssemblyFileVersion("4.2.0.0")]
+[assembly: AssemblyCopyright("Copyright (c) Ajay Kareer. MIT licensed.")]
+[assembly: AssemblyVersion("4.2.1.0")]
+[assembly: AssemblyFileVersion("4.2.1.0")]
 
 internal static class Program
 {
     private static readonly string[] Required = {
         "UpdateControl.GUI.ps1", "UpdateControl.xaml", "UpdateControl.Worker.ps1",
-        "UpdateControl.ps1", "Repair-WindowsStore.ps1", "LICENSE", "READ-ME-FIRST.txt"
+        "UpdateControl.ps1", "Repair-WindowsStore.ps1", "LICENSE", "READ-ME-FIRST.txt", "Update-Control.ico"
     };
 
     [STAThread]

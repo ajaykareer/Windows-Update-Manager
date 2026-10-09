@@ -3,7 +3,7 @@ param([switch]$Extract)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
 $exe=Join-Path $repo 'dist\Update-Control.exe'
-$zip=Join-Path $repo 'dist\Update-Control-Desktop-v4.2.0.zip'
+$zip=Join-Path $repo 'dist\Update-Control-Desktop-v4.2.1.zip'
 $assembly=[Reflection.Assembly]::Load([IO.File]::ReadAllBytes($exe))
 $resource=$assembly.GetManifestResourceStream('UpdateControl.Payload.zip')
 $buffer=New-Object IO.MemoryStream
@@ -22,6 +22,10 @@ try {
     }
 }finally{$archive.Dispose()}
 Write-Host 'PASS: EXE resource integrity, hash constant, and every packaged file matches source.'
+Add-Type -AssemblyName PresentationCore,WindowsBase
+$icons=[Windows.Media.Imaging.IconBitmapDecoder]::new([uri](Join-Path $repo 'Update-Control.ico'),[Windows.Media.Imaging.BitmapCreateOptions]::PreservePixelFormat,[Windows.Media.Imaging.BitmapCacheOption]::OnLoad)
+if((($icons.Frames | ForEach-Object {$_.PixelWidth} | Sort-Object) -join ',') -ne '16,24,32,48,64,128,256'){throw 'The Windows icon is missing required sizes.'}
+Write-Host 'PASS: all seven Windows icon frames decode.'
 if($Extract){
     if($env:GITHUB_ACTIONS -ne 'true'){throw 'Elevated extraction test is restricted to disposable GitHub Actions runners.'}
     $report=Join-Path $repo 'dist\package-check.txt'

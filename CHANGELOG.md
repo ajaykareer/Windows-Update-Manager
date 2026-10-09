@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.2.1 — Icon and publisher-signing preparation
+
+- Adds an original update/pause icon with seven Windows icon sizes and a reusable 1024 pixel PNG; applies it to the EXE, window/taskbar icon, title bar and sidebar.
+- Keeps the icon in the embedded and portable packages and adds copyright metadata.
+- Adds an optional trusted-certificate signing helper with SHA-256, RFC 3161 timestamping, signature verification and refreshed release checksums.
+- Explains UAC, SmartScreen reputation, antivirus detection and the vendor false-positive process. The release remains unsigned; no warning-free or antivirus-approved claim is made.
+- Update-control, service and watchdog behavior is unchanged.
+
 ## 4.2.0 — Desktop preview
 
 - Replaces the batch menu with a native dark WPF interface: overview, system details, activity, progress, diagnostics, explicit error/restart results and Hard Block confirmation.

@@ -40,9 +40,11 @@ Use the installed security product to scan the exact release and record the resu
 
 Microsoft accepts developer submissions of suspicious files and suspected incorrect detections at its Security Intelligence portal. Include the detected product/name, exact hash when available, repository link, and explanation of the user-selected update controls. Distinguish the affected copy from the published release if their hashes have not been compared. Do not restore a quarantined sample just to calculate its hash or execute it. A submission is not a promise of acceptance; review and classification remain with the vendor.
 
-## 4.3.0 candidate publication preflight
+## Preview publication and review preflight
 
 The candidate remains unsigned and has not received a Microsoft determination. Its functional improvements do not establish the cause of the 4.2.2 detection. Version 4.3.0 was published as a public prerelease on 2026-10-16 at the maintainer's request. The exact candidate assets are unchanged, and the preflight below has not passed; publication is not clearance.
+
+The same review limitations apply to the 4.3.1 service-wait and restart fixes. Publication as a preview does not claim a successful security review.
 
 Before promoting a replacement EXE as having completed this review, sign it using a trusted identity, obtain and inspect Microsoft's determination for those final signed bytes, and record the actual response using [release-review.template.json](release-review.template.json). Keep the template pending until there is evidence; do not substitute a local negative scan or invent a review outcome.
 

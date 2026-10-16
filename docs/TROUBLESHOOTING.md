@@ -8,7 +8,7 @@
 
 Open Update Control, select the **Restore** card, click **Restore Windows**, and follow any restart message. Reopen the controller, select **Store Friendly**, then click **Apply Store Friendly** on a supported edition. This keeps shared services available while setting automatic Windows updates to manual policy. Close and reopen Microsoft Store. If it retains an old error, run `wsreset.exe` from Win+R.
 
-In the 4.3.0 candidate, restoration is labeled **Unblock updates → Unblock & remove tasks**. Keep that candidate in review until the signing and vendor-review requirements are satisfied.
+In current previews, restoration is labeled **Unblock updates → Unblock & remove tasks**. Review the release's validation and security status before use.
 
 Do not keep Hard Block enabled while expecting Store downloads to work. Other causes, such as account, network, organization policy or Store damage, are outside this controller's repair scope.
 
@@ -41,7 +41,15 @@ The older 4.2.1 layout used static cards with separate small buttons. Close that
 
 ## Restart required
 
-Some service configurations can be written to the registry while the Service Control Manager still has the previous configuration cached. The controller returns code `3010` and shows **Restart required**. Restart Windows yourself, reopen the app, and refresh status. If a dependency is still disabled, rerun Restore and inspect the log.
+In 4.3.1, the controller compares the saved startup value with a fresh reading of the live service configuration. It returns `3010` only when those settings still differ and names the affected services. An `sc.exe` error about an optional delayed-start flag is logged, but does not trigger a restart if the requested startup mode already took effect. Requirements from intermediate restore steps are rechecked against the final requested settings.
+
+If a restart is requested, save your work, restart Windows yourself, reopen the app and refresh status. This result means verification is incomplete, not that a restart guarantees success. If a dependency is still disabled, use Unblock and inspect the log.
+
+## Slow stops and error 1061
+
+Version 4.3.1 waits up to 120 seconds for each service to stop. It observes StartPending/StopPending instead of sending repeated stop commands during those transitions. If Windows returns 1061 after a state change, it re-reads status and retries at five-second intervals when the service is ready. Activity shows the service, state and elapsed time at least every ten seconds while polling.
+
+If the deadline expires, the operation fails with the service name and last state, then attempts rollback. It does not terminate shared service processes or report the block as verified. Access-denied errors remain distinct. The watchdog uses the same waiting logic, allows twelve minutes for a run and ignores overlapping triggers.
 
 ## Needs attention / failed transition
 

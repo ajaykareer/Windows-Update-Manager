@@ -89,7 +89,7 @@
             <StackPanel DockPanel.Dock="Bottom">
               <Border Height="1" Background="#293A51" Margin="12,0,12,16"/>
               <TextBlock x:Name="AccessText" Text="Checking access" Foreground="#4CE1BE" FontWeight="SemiBold" FontSize="12" Margin="12,0,0,6"/>
-              <TextBlock Text="v4.3.0  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
+              <TextBlock Text="v4.3.1  /  Local control" Foreground="#788FA9" FontSize="11" Margin="12,0,0,0"/>
             </StackPanel>
           </DockPanel>
         </Border>

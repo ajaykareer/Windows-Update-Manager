@@ -40,6 +40,7 @@ Write-Host 'PASS: matching policies removed, unrelated/custom settings and real 
 
 & {
     $script:StartValue = 4
+    $script:RepairTargets=@{}
     $script:ScCalls = 0
     function Get-Service { [pscustomobject]@{StartType='Disabled'} }
     function Read-Value { $script:StartValue }
@@ -58,6 +59,7 @@ Write-Host 'PASS: disabled services enabled; enabled configurations and missing 
 
 & {
     $script:NeedsRestart=$false
+    $script:RepairTargets=@{}
     $script:StartValue=4
     function Get-Service { [pscustomobject]@{StartType='Disabled'} }
     function Read-Value { $script:StartValue }
@@ -65,13 +67,23 @@ Write-Host 'PASS: disabled services enabled; enabled configurations and missing 
     function Set-ItemProperty($LiteralPath,$Name,$Value) { $script:StartValue=$Value }
     Repair-Service 'WaaSMedicSvc' 3
     Assert ($script:NeedsRestart -and $script:StartValue -eq 3) 'Registry fallback did not require restart.'
+    function Get-Service { [pscustomobject]@{StartType='Manual'} }
+    Update-RepairRestartRequirement
+    Assert (-not $script:NeedsRestart) 'Resolved repair retained a restart flag.'
     $script:StartValue=4
+    function Get-Service { [pscustomobject]@{StartType=if($script:StartValue -eq 4){'Disabled'}else{'Manual'}} }
+    function sc.exe { $script:StartValue=3; $global:LASTEXITCODE=5; 'Delayed autostart flag denied' }
+    function Set-ItemProperty { throw 'Unnecessary registry fallback' }
+    Repair-Service 'WaaSMedicSvc' 3
+    Assert (-not $script:NeedsRestart) 'Partial optional-flag failure triggered an unnecessary repair restart.'
+    $script:StartValue=4
+    function sc.exe { $global:LASTEXITCODE=5; 'Access denied' }
     function Set-ItemProperty { throw 'Access denied' }
     $caught=$false
     try { Repair-Service 'WaaSMedicSvc' 3 } catch { $caught=$true }
     Assert $caught 'Failed service repair was silently accepted.'
 }
-Write-Host 'PASS: protected service fallback requires restart; denied repair surfaces an error.'
+Write-Host 'PASS: actual live mismatch requires restart, resolved/partial config does not, denied repair surfaces an error.'
 
 & {
     $guardDir='C:\ProgramData\POS_WU_Guardian'

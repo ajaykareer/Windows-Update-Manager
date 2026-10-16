@@ -1,17 +1,18 @@
 # Validation and limits
 
-Version 4.3.0 is a development candidate. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine, or that an antivirus detection is resolved.
+Version 4.3.1 is a development candidate. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine, or that an antivirus detection is resolved.
 
 See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml) for the result on each commit. The release packages should come from a successful run for the release commit.
 
 | Check | Coverage | What it does not prove |
 | --- | --- | --- |
 | Controller regression suite | Hard → Store → Restore, repeated restore, original policy, immutable baseline, failure rollback, corrupt state, real file locks, task startup timeout, stale/corrupt/future health rejection, service drift and changed script detection | Actual Windows Update service permissions or OS policy enforcement |
+| Service transition regressions | Pending start/stop, slow completion, 1061/1062 races, retry interval, timeout, denied stop, optional-flag warning, actual saved/live mismatch, cleared restart reasons and failed registry writes | Timing and permissions of every Windows client service |
 | Watchdog removal regression | Both legacy naming families; all task folders; independent disable/stop/delete attempts; CLI fallback; remaining tasks fail explicitly | Every third-party task or renamed/custom blocker |
 | Repair regression suite | Exact known policy/ACL cleanup, unrelated policy preservation, service fallback errors, backup and teardown ordering | Exact pre-script permissions that old releases never recorded |
 | WPF smoke test | Actual status worker, card heading/body/padding hit targets, unobstructed Apply target at standard/minimum sizes, accessibility selection/invocation, no changes on selection/cancel, action routing, modal isolation, disabled-state reasons and selection persistence | Physical pointer/keyboard input or a real privileged button click on the affected PC |
 | Interface previews | Real WPF rendering with sample status, including smaller window layouts | A screenshot of successful live blocking |
-| Windows API integration | Actual temporary services, protected state/engine ACLs, scheduled SYSTEM task execution and health confirmation, automatic one-minute trigger correcting service drift, startup-setting restoration, nested task deletion and preservation of an unrelated task | Client Windows Update, Medic behavior, startup trigger after a real reboot, MDM or Store app installation |
+| Windows API integration | Actual temporary services including a 25-second StopPending transition, protected state/engine ACLs, scheduled SYSTEM task execution and health confirmation, automatic one-minute trigger correcting service drift, startup-setting restoration, nested task deletion and preservation of an unrelated task | Client Windows Update, Medic behavior, startup trigger after a real reboot, MDM or Store app installation |
 | EXE/ZIP verification | Embedded SHA-256, exact source-to-package comparison, real elevated extraction and cached second launch in CI | Publisher signing, SmartScreen reputation or antivirus acceptance |
 | Release preflight regression | Rejects unsigned/invalid signatures, pending vendor records, wrong hashes, unrelated evidence URLs and future dates | Authenticity of a manually supplied vendor response; future detection behavior |
 

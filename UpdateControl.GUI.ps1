@@ -167,6 +167,9 @@ function Show-JobResult($Result) {
         $script:Ui.ResultTitle.Text='Restart required'
         $script:Ui.ResultTitle.Foreground='#F0BF69'
         $script:Ui.ResultMessage.Text='Settings were saved, but Windows needs a restart to reload some services. Save your work, restart this PC, then refresh status here.'
+        if ($Result.PSObject.Properties['RestartServices'] -and @($Result.RestartServices).Count) {
+            $script:Ui.ResultMessage.Text='Windows still reports a different startup setting for: '+($Result.RestartServices -join ', ')+'. Save your work, restart this PC, then refresh status here. The selected mode is not fully verified yet.'
+        }
         $script:Ui.OperationText.Text='Changes saved. Restart required before verification.'
         Add-Activity 'Changes saved. Restart required; Windows was not restarted automatically.'
     } elseif ($Result.ExitCode -eq 0) {
@@ -478,8 +481,10 @@ try {
             Show-JobResult $failure
             if($script:Ui.ResultTitle.Text -ne 'Needs attention'){throw 'Failure was not displayed distinctly.'}
             $failure.ExitCode=3010
+            $failure | Add-Member -NotePropertyName RestartServices -NotePropertyValue @('DoSvc')
             Show-JobResult $failure
             if($script:Ui.ResultTitle.Text -ne 'Restart required'){throw 'Restart requirement was not displayed.'}
+            if($script:Ui.ResultMessage.Text -notmatch 'DoSvc'){throw 'Restart reason did not identify the service.'}
             'PASS: full-card and visible Apply hit targets, accessible selection and Apply, zero changes on selection/cancel, modal isolation, action routing, disabled reasons and selection preservation.'
 
         }

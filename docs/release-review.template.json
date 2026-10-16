@@ -1,0 +1,9 @@
+{
+  "Schema": 1,
+  "Vendor": "Microsoft",
+  "Verdict": "Pending",
+  "Sha256": "REPLACE_WITH_FINAL_SIGNED_EXE_HASH",
+  "ReviewedUtc": null,
+  "SubmissionId": null,
+  "EvidenceUrl": null
+}

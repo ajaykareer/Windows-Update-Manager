@@ -68,6 +68,8 @@ try {
     Assert ((Invoke-ModeChange 'Hard') -eq 0) 'Hard mode returned failure.'
     Assert ((Read-State).Mode -eq 'Hard') 'Hard state missing.'
     Assert (@(Get-OurTasks).Count -eq 1) 'Expected one real scheduled task.'
+    Assert ((Read-WatchdogHealth (Read-State)).Outcome -eq 'Pass') 'Hard Block did not prove that the SYSTEM task ran.'
+    Assert ((Get-ControlStatus).Verification -eq 'Verified') 'Hard Block status was not verified.'
     foreach($name in $serviceNames){Assert ((Get-Service $name).Status -eq 'Stopped' -and (Read-RegValue "$script:SvcRoot\$name" 'Start').Value -eq 4) "Service not blocked: $name"}
     $baselineId=(Read-Baseline).Id
     # Deliberately drift one temporary service, then prove the SYSTEM guardian corrects it.
@@ -83,6 +85,7 @@ try {
     Write-Host 'PASS: real service block, protected engine installation, task registration and SYSTEM enforcement.'
     Assert ((Invoke-ModeChange 'Store') -eq 0) 'Store transition failed.'
     Assert (@(Get-OurTasks).Count -eq 0) 'Store mode left a task behind.'
+    Assert (-not (Test-Path -LiteralPath $script:InstalledEngine)) 'Store mode left the installed watchdog script.'
     Assert ((Read-RegValue $script:AuKey 'NoAutoUpdate').Value -eq 1) 'Manual policy missing.'
     Assert ((Read-Baseline).Id -eq $baselineId) 'Mode switch replaced the baseline.'
     foreach($name in $serviceNames){Assert ((Get-Service $name).Status -eq 'Running') "Temporary dependency failed to start: $name"}
@@ -92,9 +95,32 @@ try {
     Assert ((Read-RegValue "$script:SvcRoot\$($serviceNames[0])" 'DelayedAutoStart').Value -eq 1) 'Delayed-start setting was not restored.'
     Assert (-not (Read-RegValue $script:AuKey 'NoAutoUpdate').Exists) 'Originally absent policy remains.'
     Assert (@(Get-OurTasks).Count -eq 0) 'Restore left a task behind.'
+    Assert ((Get-ControlStatus).Verification -eq 'Verified') 'Restored baseline did not verify.'
     Assert ((Invoke-ModeChange 'Restore') -eq 0) 'Repeated restore failed.'
+    # Real nested legacy tasks: cleanup must remove exact known names, retaining an unrelated neighbor.
+    $folder='\'+$prefix+'\'
+    $legacyName=$prefix+'Legacy'
+    $neighborName=$prefix+'Unrelated'
+    $scheduler=New-Object -ComObject Schedule.Service
+    $scheduler.Connect()
+    $scheduler.GetFolder('\').CreateFolder($prefix) | Out-Null
+    $script:GuardianNames=@($taskName,$legacyName)
+    $noop=New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\cmd.exe" -Argument '/c exit 0'
+    Register-ScheduledTask -TaskPath $folder -TaskName $legacyName -Action $noop -Force | Out-Null
+    Register-ScheduledTask -TaskPath $folder -TaskName $neighborName -Action $noop -Force | Out-Null
+    function Test-LegacyBlock { $false } # Only task cleanup is exercised, never production legacy repair.
+    Assert ((Invoke-ModeChange 'Restore') -eq 0) 'Nested watchdog cleanup failed.'
+    Assert (@(Get-OurTasks).Count -eq 0) 'Nested known task remains.'
+    Assert ($null -ne (Get-ScheduledTask -TaskPath $folder -TaskName $neighborName)) 'Unrelated task was removed.'
     Write-Host 'PASS: real Hard -> Store -> Restore -> Restore, baseline preservation, exact policy restoration and zero leftover watchdogs.'
 } finally {
+    if(Get-Variable folder -ErrorAction SilentlyContinue){
+        foreach($name in @($legacyName,$neighborName)){
+            $item=Get-ScheduledTask -TaskPath $folder -TaskName $name -ErrorAction SilentlyContinue
+            if($item){Unregister-ScheduledTask -InputObject $item -Confirm:$false}
+        }
+        if($prefix -match '^UC4Test[a-f0-9]{12}$'){$scheduler.GetFolder('\').DeleteFolder($prefix,0)}
+    }
     $task=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if($task){Stop-ScheduledTask -InputObject $task -ErrorAction SilentlyContinue;Unregister-ScheduledTask -InputObject $task -Confirm:$false}
     foreach($name in $serviceNames){

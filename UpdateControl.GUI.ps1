@@ -65,8 +65,8 @@ function Set-UiAvailability {
         elseif($script:SelectedMode -eq 'Store' -and -not $script:StoreSupported){'Store Friendly is unavailable on this Windows edition. Use Windows Settings > Pause updates.'}
         else{$null}
     $labels=@{Store='Store Friendly';Hard='Hard Block';Restore='Restore Windows'}
-    $buttons=@{Store='Apply Store Friendly';Hard='Review Hard Block...';Restore='Restore Windows'}
-    $hints=@{Store='Shared app services stay available. Automatic OS updates use manual policy.';Hard='Store downloads will be restricted. You will confirm before anything changes.';Restore='Remove known watchdogs and restore the saved settings from before this tool.'}
+    $buttons=@{Store='Apply Store Friendly';Hard='Review Hard Block...';Restore='Unblock & remove tasks'}
+    $hints=@{Store='Keep Store installs available with manual OS-update policy. Removes this app''s watchdogs.';Hard='Blocks shared services and installs one watchdog. Store downloads stop too. Review before applying.';Restore='Stop and delete this app''s known tasks, remove its watchdog script, and restore saved settings.'}
     $script:Ui.SelectionTitle.Text=if($script:SelectedMode){'2  Selected: '+$labels[$script:SelectedMode]}else{'2  Apply your selection'}
     $script:Ui.ApplyButton.Content=if($script:SelectedMode){$buttons[$script:SelectedMode]}else{'Select a mode'}
     $script:Ui.SelectionHint.Text=if($reason){$reason}else{$hints[$script:SelectedMode]}
@@ -117,16 +117,20 @@ function Update-StatusView($Status,$Computer) {
     $descriptions=@{
         Unmanaged='Choose a mode below. No v4 mode is configured on this PC.'
         Normal='The controller has restored your saved settings.'
-        Hard='Shared update services are blocked. Store downloads are also restricted.'
+        Hard='Hard Block is selected. The checks below show whether it is currently effective.'
         Store='Windows updates are manual. Store services remain available.'
         Transition='A settings change has not finished. Check activity before continuing.'
         RecoveryRequired='The last operation needs attention. Choose Restore and review the log.'
     }
     $script:Ui.ModeText.Text=$labels[$Status.Mode]
     $script:Ui.ModeDescription.Text=$descriptions[$Status.Mode]
+    $script:Ui.VerificationText.Text=$Status.Verification+' - open System details for individual checks.'
+    $script:Ui.ChecksGrid.ItemsSource=@($Status.Checks)
+    $script:Ui.HealthText.Text=if($Status.WatchdogHealth){'Watchdog checked '+([datetime]$Status.WatchdogHealth.CheckedUtc).ToLocalTime().ToString('HH:mm:ss')}elseif($Status.Mode -eq 'Hard'){'Watchdog run not verified'}else{'No watchdog required'}
     $color=if(@($Status.Warnings).Count){'#F0BF69'}elseif($Status.Mode -eq 'Hard'){'#E6A0B7'}elseif($Status.Mode -eq 'Unmanaged'){'#9CB1CD'}else{'#4CE1BE'}
     $script:Ui.StatusDot.Fill=$color
     $script:Ui.StatusCard.BorderBrush=$color
+    $script:Ui.VerificationText.Foreground=if($Status.Verification -eq 'Verified'){'#4CE1BE'}elseif($Status.Verification -eq 'Not configured'){'#9CB1CD'}else{'#F0BF69'}
     $script:Ui.WatchdogCount.Text=[string]@($Status.Tasks).Count
     $script:Ui.CheckedText.Text='Checked '+(Get-Date -Format 'HH:mm:ss')
     $script:Ui.ServicesGrid.ItemsSource=@($Status.Services)
@@ -169,9 +173,9 @@ function Show-JobResult($Result) {
         $script:Ui.ResultTitle.Foreground='#4CE1BE'
         $titles=@{Hard='Hard Block configured';Store='Ready for app downloads';Restore='Blocker removed';Report='Diagnostic report saved'}
         $messages=@{
-            Hard='One watchdog enforces the selected mode. Switch to Store Friendly when you need Microsoft Store downloads.'
+            Hard='The services and policy were checked, and the SYSTEM watchdog confirmed a successful check. It runs at startup and every minute. Use Store Friendly for app installs.'
             Store='Reopen Microsoft Store and try ChatGPT. If its previous error remains, use Win + R, enter wsreset.exe, then retry.'
-            Restore='Watchdog removal was verified. Your saved settings were restored where a v4 backup exists. Other software or organization policies may still apply.'
+            Restore='Verified: zero known watchdog tasks and no installed watchdog script. Saved settings were restored where a v4 backup exists. Other software or organization policies may still apply.'
             Report=('Report saved to: '+$Result.ReportPath)
         }
         $script:Ui.ResultTitle.Text=$titles[$action]
@@ -278,8 +282,11 @@ function New-SampleStatus([string]$Mode) {
         $blocked=$actual -eq 'Hard' -and $_ -in @('wuauserv','UsoSvc','BITS','DoSvc')
         [pscustomobject]@{Name=$_;State=if($blocked){'Stopped'}else{'Running'};Startup=if($blocked){'Disabled'}elseif($_ -in @('UsoSvc','DoSvc')){'Automatic'}else{'Manual'};RegistryStart=if($blocked){4}else{3}}
     }
-    $warnings=if($actual -eq 'RecoveryRequired'){@('A previous task deletion failed. Select Restore and review the log.')}else{@()}
-    return [pscustomobject]@{Mode=$actual;Detail='Sample state for interface preview';NoAutoUpdate=if($actual -in @('Hard','Store')){1}else{$null};Tasks=@($tasks);Services=@($services);Warnings=@($warnings);DataFolder='C:\ProgramData\POSUpdateControl'}
+    $warnings=@(if($actual -eq 'RecoveryRequired'){'A previous task deletion failed. Select Unblock and review the log.'})
+    $verification=if($actual -eq 'Unmanaged'){'Not configured'}elseif($actual -in @('RecoveryRequired','Transition')){'Needs attention'}else{'Verified'}
+    $checks=if($actual -eq 'Hard'){@([pscustomobject]@{Name='Update services';Result='Pass';Detail='Stopped and disabled (sample).'},[pscustomobject]@{Name='Watchdog installation';Result='Pass';Detail='One SYSTEM task; startup and minute triggers (sample).'},[pscustomobject]@{Name='Recent watchdog run';Result='Pass';Detail='Current block verified by the task (sample).'})}else{@([pscustomobject]@{Name='Watchdog removal';Result=if($warnings.Count){'Fail'}else{'Pass'};Detail=if($warnings.Count){$warnings[0]}else{'Zero known watchdogs (sample).'}})}
+    $health=if($actual -eq 'Hard'){[pscustomobject]@{Outcome='Pass';CheckedUtc=[DateTime]::UtcNow.ToString('o');Detail='Sample verified task run.'}}else{$null}
+    return [pscustomobject]@{Mode=$actual;Detail='Sample state for interface preview';Verification=$verification;Checks=$checks;WatchdogHealth=$health;NoAutoUpdate=if($actual -in @('Hard','Store')){1}else{$null};Tasks=@($tasks);Services=@($services);Warnings=@($warnings);DataFolder='C:\ProgramData\POSUpdateControl'}
 }
 function Export-UiPreview([string]$Path) {
     $root=$script:Ui.RenderRoot
@@ -478,7 +485,7 @@ try {
     $script:Window.ShowDialog() | Out-Null
 }catch{
     $message=$_.Exception.Message
-    if($PreviewPath -or $SmokeTest){Write-Error $message;exit 1}
+    if($PreviewPath -or $SmokeTest){Write-Error ($message+"`r`n"+$_.ScriptStackTrace);exit 1}
     $errorLog=Join-Path $env:TEMP 'Update-Control-GUI-error.txt'
     $_ | Out-String | Set-Content -LiteralPath $errorLog
     [Windows.MessageBox]::Show("The interface could not start.`r`n`r`n$message`r`n`r`nDetails: $errorLog`r`nYou can also use Update-Control-Console.cmd.",'Update Control','OK','Error')|Out-Null

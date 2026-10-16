@@ -1,6 +1,6 @@
 #Requires -Version 5.1
 <#
-Update Control 4.2. CMD is the launcher; this file owns all changes.
+Update Control 4.3. CMD is the launcher; this file owns all changes.
 Status, Report and Preview never change services, policy, or scheduled tasks.
 #>
 [CmdletBinding()]
@@ -85,8 +85,8 @@ function Read-State {
         return $state
     } catch { return [pscustomobject]@{Mode='RecoveryRequired'; Detail='State file unreadable. Use Restore.'; UpdatedUtc=$null} }
 }
-function Save-State([string]$Mode,[string]$Detail) {
-    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Mode=$Mode; Detail=$Detail; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
+function Save-State([string]$Mode,[string]$Detail,[string]$EngineHash='',[string]$BaselineId='') {
+    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Version='4.3.0'; Mode=$Mode; Detail=$Detail; Generation=[guid]::NewGuid().ToString('N'); EngineHash=$EngineHash; BaselineId=$BaselineId; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
 }
 function Initialize-Storage {
     if (Test-Path -LiteralPath $script:Root) {
@@ -108,7 +108,7 @@ function Initialize-Storage {
             if ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Unexpected reparse point: $path" }
         } else { New-Item -ItemType Directory -Path $path | Out-Null }
     }
-    foreach ($path in @($script:StateFile,$script:BaselineFile,$script:InstalledEngine,(Join-Path $script:Root 'operation.lock'))) {
+    foreach ($path in @($script:StateFile,$script:BaselineFile,$script:InstalledEngine,(Join-Path $script:Root 'operation.lock'),(Join-Path $script:Root 'watchdog-health.json'))) {
         if ((Test-Path -LiteralPath $path) -and ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "Unexpected reparse point: $path" }
     }
     $script:LogFile = Join-Path $script:Root ("logs\{0}-{1}-{2}.log" -f (Get-Date -Format 'yyyyMMdd-HHmmss-fff'),$Action,$PID)
@@ -165,6 +165,7 @@ function Remove-Watchdogs {
             Rename-Item -LiteralPath $path -NewName ((Split-Path $path -Leaf)+'.disabled-'+[guid]::NewGuid().ToString('N'))
         }
     }
+    if (@(Get-OurTasks).Count) { throw 'A watchdog reappeared during removal. Restore is incomplete.' }
     Write-Audit 'Verified: all known watchdog names are absent from every task folder.'
 }
 function Test-LegacyBlock {
@@ -272,8 +273,64 @@ function Register-Watchdog {
     $settings=New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
     $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName $script:TaskName -TaskPath '\' -Action $taskAction -Trigger $triggers -Settings $settings -Principal $principal -Description 'Update Control v4: enforce Hard mode only. Restore disarms state before removing this task.' -Force | Out-Null
+    Assert-WatchdogDefinition
+    if ((Get-FileHash -LiteralPath $script:InstalledEngine).Hash -ne (Get-FileHash -LiteralPath $PSCommandPath).Hash) { throw 'Installed watchdog code differs from this controller.' }
+}
+function Assert-WatchdogDefinition {
     $tasks=@(Get-OurTasks)
-    if ($tasks.Count -ne 1 -or $tasks[0].TaskName -ne $script:TaskName -or $tasks[0].State -eq 'Disabled' -or @($tasks[0].Triggers).Count -ne 2) { throw 'Watchdog registration could not be verified.' }
+    if ($tasks.Count -ne 1) { throw 'Expected exactly one watchdog task.' }
+    $task=$tasks[0]
+    $expected='-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -Action Enforce' -f $script:InstalledEngine
+    if ($task.TaskName -ne $script:TaskName -or $task.TaskPath -ne '\' -or $task.State -eq 'Disabled' -or -not $task.Settings.Enabled) { throw 'The watchdog task is missing, disabled or in the wrong folder.' }
+    if (@($task.Actions).Count -ne 1 -or $task.Actions[0].Execute -ne $script:PSExe -or $task.Actions[0].Arguments -cne $expected) { throw 'The watchdog command does not match this controller.' }
+    if ($task.Principal.UserId -notin @('SYSTEM','S-1-5-18','NT AUTHORITY\SYSTEM') -or "$($task.Principal.RunLevel)" -notin @('Highest','1')) { throw 'The watchdog does not have the expected SYSTEM identity.' }
+    $triggers=@($task.Triggers)
+    $boot=@($triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskBootTrigger' -and $_.Enabled })
+    $minute=@($triggers | Where-Object { $_.CimClass.CimClassName -eq 'MSFT_TaskTimeTrigger' -and $_.Enabled -and $_.Repetition.Interval -eq 'PT1M' })
+    if ($triggers.Count -ne 2 -or $boot.Count -ne 1 -or $minute.Count -ne 1) { throw 'The watchdog must have enabled startup and one-minute triggers.' }
+}
+function Assert-HardBlock {
+    $policy=Read-RegValue $script:AuKey 'NoAutoUpdate'
+    if (-not $policy.Exists -or $policy.Kind -ne 'DWord' -or $policy.Value -ne 1) { throw 'Automatic-update policy is not disabled.' }
+    foreach ($name in $script:HardServices) {
+        $svc=Get-Service -Name $name
+        if ((Read-RegValue "$script:SvcRoot\$name" 'Start').Value -ne 4 -or $svc.StartType -ne 'Disabled' -or $svc.Status -ne 'Stopped') { throw "Hard Block is not effective for $name. A restart or repair may be required." }
+    }
+}
+function Write-WatchdogHealth($State,[string]$Outcome,[string]$Detail) {
+    if (-not $State.PSObject.Properties['Generation']) { return }
+    Write-AtomicJson (Join-Path $script:Root 'watchdog-health.json') ([ordered]@{Schema=1;Generation=$State.Generation;Outcome=$Outcome;Detail=$Detail;CheckedUtc=[DateTime]::UtcNow.ToString('o')})
+}
+function Read-WatchdogHealth($State) {
+    try {
+        $health=Get-Content -LiteralPath (Join-Path $script:Root 'watchdog-health.json') -Raw -ErrorAction Stop | ConvertFrom-Json
+        if (-not $State.PSObject.Properties['Generation'] -or $health.Schema -ne 1 -or $health.Generation -cne $State.Generation -or $health.Outcome -notin @('Pass','Fail')) { return $null }
+        $stamp=[datetime]::Parse($health.CheckedUtc,[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::RoundtripKind).ToUniversalTime()
+        if ($stamp -gt [DateTime]::UtcNow.AddSeconds(30) -or $stamp -lt [DateTime]::UtcNow.AddMinutes(-3)) { return $null }
+        return $health
+    } catch { return $null }
+}
+function Verify-WatchdogExecution([int]$TimeoutSeconds=25) {
+    $state=Read-State
+    Start-ScheduledTask -TaskName $script:TaskName -TaskPath '\'
+    $watch=[Diagnostics.Stopwatch]::StartNew()
+    do {
+        $health=Read-WatchdogHealth $state
+        if ($health) {
+            if ($health.Outcome -ne 'Pass') { throw ('Watchdog verification failed: '+$health.Detail) }
+            Write-Audit ('SYSTEM watchdog verified the selected settings at '+$health.CheckedUtc)
+            return
+        }
+        Start-Sleep -Milliseconds 250
+    } while ($watch.Elapsed.TotalSeconds -lt $TimeoutSeconds)
+    throw 'The watchdog was registered but did not confirm a successful run. The block has not been accepted as complete.'
+}
+function Remove-WatchdogFiles {
+    if (@(Get-OurTasks).Count) { throw 'Cannot retire watchdog files while a known task remains.' }
+    foreach ($path in @($script:InstalledEngine,(Join-Path $script:Root 'watchdog-health.json'))) {
+        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -ErrorAction Stop }
+        if (Test-Path -LiteralPath $path) { throw "Watchdog file could not be removed: $path" }
+    }
 }
 function Assert-StoreReady {
     foreach ($name in $script:StoreServices) {
@@ -318,6 +375,7 @@ function Assert-BaselineRestored($Baseline) {
     if (@(Get-OurTasks).Count) { throw 'A watchdog remains after restore.' }
 }
 function Invoke-ModeChange([string]$Mode) {
+    if ($Mode -notin @('Hard','Store','Restore')) { throw 'Unsupported mode change.' }
     if (-not (Test-Admin)) { throw 'Administrator access is required. Right-click the CMD and choose Run as administrator.' }
     if ($Mode -eq 'Store') { Assert-StoreEdition }
     Initialize-Storage
@@ -330,6 +388,7 @@ function Invoke-ModeChange([string]$Mode) {
         Save-State 'Transition' 'Watchdog is disarmed while settings change.'
         Write-Step 'Disarming and removing watchdogs from every task folder...'
         Remove-Watchdogs
+        Remove-WatchdogFiles
         $baseline=Read-Baseline
         if ($baseline) {
             Write-Step 'Restoring the saved service settings...'
@@ -343,7 +402,8 @@ function Invoke-ModeChange([string]$Mode) {
         if ($Mode -eq 'Restore') {
             if ($baseline) { Assert-BaselineRestored $baseline }
             if (@(Get-OurTasks).Count) { throw 'Watchdogs remain; restoration is incomplete.' }
-            Save-State 'Normal' 'Tool changes removed; original settings restored where a v4 backup exists.'
+            $restoredId=if($baseline){$baseline.Id}elseif($previous.Mode -eq 'Normal' -and $previous.PSObject.Properties['BaselineId']){$previous.BaselineId}else{''}
+            Save-State 'Normal' 'Tool changes removed; original settings restored where a v4 backup exists.' '' $restoredId
             if (Test-Path -LiteralPath $script:BaselineFile) { Remove-Item -LiteralPath $script:BaselineFile }
             Write-Step 'Verified: zero watchdogs. This tool is no longer blocking updates.'
         } else {
@@ -360,8 +420,16 @@ function Invoke-ModeChange([string]$Mode) {
                 Set-HardBlock
                 Write-Step 'Installing one watchdog with startup and one-minute triggers...'
                 Register-Watchdog
-                Save-State 'Hard' 'Hard block selected. Store downloads require Store Friendly or Restore.'
-                Write-Step 'Hard block configured; one watchdog verified.'
+                $engineHash=(Get-FileHash -LiteralPath $script:InstalledEngine).Hash
+                Save-State 'Hard' 'Hard Block selected. Store downloads require Store Friendly or Unblock.' $engineHash
+                if (-not $script:RebootNeeded) {
+                    Assert-HardBlock
+                    Write-Step 'Checking that the SYSTEM watchdog can run and verify this block...'
+                    Verify-WatchdogExecution
+                    Assert-WatchdogDefinition
+                    Assert-HardBlock
+                    Write-Step 'Verified: update services blocked and one SYSTEM watchdog successfully ran.'
+                } else { Write-Step 'Watchdog installed. Restart is required before the block can be fully verified.' }
             }
         }
         if ($script:RebootNeeded) { Write-Host '  RESTART REQUIRED: some service changes need Windows to reload them.' -ForegroundColor Yellow; return 3010 }
@@ -371,7 +439,7 @@ function Invoke-ModeChange([string]$Mode) {
         Write-Audit "FAILED: $failure"
         # Roll back a failed new block. Never leave an armed guardian after a failed transition.
         Save-State 'RecoveryRequired' $failure
-        try { Remove-Watchdogs } catch { Write-Audit "Cleanup also failed: $($_.Exception.Message)" }
+        try { Remove-Watchdogs; Remove-WatchdogFiles } catch { Write-Audit "Cleanup also failed: $($_.Exception.Message)" }
         if ($Mode -ne 'Restore' -and $baseline) {
             try { Restore-Baseline $baseline $false; Write-Audit 'Rolled back to baseline. Select Restore to finish verification.' }
             catch { Write-Audit "Rollback needs attention: $($_.Exception.Message)" }
@@ -383,17 +451,27 @@ function Invoke-Enforcement {
     # No state, corrupt state, non-Hard state, or a busy controller means no work.
     if (-not (Test-Path -LiteralPath $script:Root)) { return 0 }
     $lock=Enter-OperationLock 0
-    if (-not $lock) { return 0 }
+    $state=$null
     try {
-        if ((Read-State).Mode -ne 'Hard') { return 0 }
+        $state=Read-State
+        if ($state.Mode -ne 'Hard') { return 0 }
         $script:LogFile=Join-Path $script:Root 'logs\watchdog.log'
         if ((Test-Path -LiteralPath $script:LogFile) -and (Get-Item -LiteralPath $script:LogFile).Length -gt 2MB) {
             Move-Item -LiteralPath $script:LogFile -Destination (Join-Path $script:Root 'logs\watchdog.previous.log') -Force
         }
-        Set-HardBlock
+        # While Apply holds the lock, prove the task runs and observes the block without changing settings.
+        # Normal startup/minute runs obtain the lock and reapply before verifying.
+        if ($lock) { Set-HardBlock }
+        Assert-HardBlock
+        Write-WatchdogHealth $state 'Pass' $(if($lock){'Block enforced and verified.'}else{'Block verified; Apply owns the operation lock.'})
         return 0
-    } catch { Write-Audit "Enforcement failed: $($_.Exception.Message)"; return 1 }
-    finally { $lock.Dispose() }
+    } catch {
+        $failure=$_.Exception.Message
+        Write-Audit "Enforcement failed: $failure"
+        if ($state -and $state.Mode -eq 'Hard') { try { Write-WatchdogHealth $state 'Fail' $failure } catch { } }
+        return 1
+    }
+    finally { if($lock){$lock.Dispose()} }
 }
 function Get-ControlStatus {
     $state=Read-State
@@ -402,28 +480,66 @@ function Get-ControlStatus {
         $svc=Get-Service -Name $name -ErrorAction SilentlyContinue
         $services += [pscustomobject]@{Name=$name; State=if($svc){"$($svc.Status)"}else{'Missing'}; Startup=if($svc){"$($svc.StartType)"}else{'Missing'}; RegistryStart=(Read-RegValue "$script:SvcRoot\$name" 'Start').Value}
     }
-    $tasks=@(Get-OurTasks | ForEach-Object { [pscustomobject]@{Name=$_.TaskPath+$_.TaskName; State="$($_.State)"} })
-    $manual=(Read-RegValue $script:AuKey 'NoAutoUpdate').Value
+    $tasks=@(Get-OurTasks | ForEach-Object {
+        $task=$_; $lastRun=$null; $lastResult=$null
+        try { $info=Get-ScheduledTaskInfo -InputObject $task; $lastRun=$info.LastRunTime.ToUniversalTime().ToString('o'); $lastResult=$info.LastTaskResult } catch { }
+        [pscustomobject]@{Name=$task.TaskPath+$task.TaskName; State="$($task.State)";LastRunUtc=$lastRun;LastResult=$lastResult}
+    })
+    $policy=Read-RegValue $script:AuKey 'NoAutoUpdate'
+    $manual=$policy.Value
     $warnings=New-Object 'System.Collections.Generic.List[string]'
+    $checks=New-Object 'System.Collections.Generic.List[object]'
+    function Add-Check([string]$Name,[string]$Result,[string]$Detail) {
+        $checks.Add([pscustomobject]@{Name=$Name;Result=$Result;Detail=$Detail})
+        if($Result -in @('Fail','Pending')){$warnings.Add($Detail)}
+    }
+    $health=$null
     if ($state.Mode -eq 'Hard') {
-        if ($tasks.Count -ne 1 -or $tasks[0].Name -ne "\$script:TaskName" -or $tasks[0].State -eq 'Disabled') { $warnings.Add('Expected one active v4 watchdog; task state differs.') }
+        Add-Check 'Automatic-update policy' $(if($policy.Kind -eq 'DWord' -and $manual -eq 1){'Pass'}else{'Fail'}) $(if($policy.Kind -eq 'DWord' -and $manual -eq 1){'Manual-update policy is set.'}else{'The automatic-update policy differs from Hard Block.'})
         foreach ($svc in $services | Where-Object { $_.Name -in $script:HardServices }) {
-            if ($svc.RegistryStart -ne 4 -or $svc.Startup -ne 'Disabled' -or $svc.State -ne 'Stopped') { $warnings.Add("Hard block not effective for $($svc.Name); restart or reapply.") }
+            $blocked=$svc.RegistryStart -eq 4 -and $svc.Startup -eq 'Disabled' -and $svc.State -eq 'Stopped'
+            Add-Check $svc.Name $(if($blocked){'Pass'}else{'Fail'}) $(if($blocked){'Stopped and disabled.'}else{"$($svc.Name) is not fully blocked. Restart or reapply and verify."})
         }
+        try { Assert-WatchdogDefinition; Add-Check 'Watchdog installation' 'Pass' 'One enabled SYSTEM task with the expected command, startup and minute triggers.' }
+        catch { Add-Check 'Watchdog installation' 'Fail' $_.Exception.Message }
+        try {
+            if (-not $state.PSObject.Properties['EngineHash'] -or $state.EngineHash -notmatch '^[a-fA-F0-9]{64}$') { throw 'This older configuration has no recorded engine hash. Reapply Hard Block with the reviewed version to verify it.' }
+            if ((Get-FileHash -LiteralPath $script:InstalledEngine -ErrorAction Stop).Hash -cne $state.EngineHash) { throw 'The installed watchdog file is missing or has changed.' }
+            Add-Check 'Watchdog file' 'Pass' 'Installed script matches the hash saved when Hard Block was applied.'
+        } catch { Add-Check 'Watchdog file' 'Fail' $_.Exception.Message }
+        $health=Read-WatchdogHealth $state
+        if ($health) { Add-Check 'Recent watchdog run' $health.Outcome ($health.Detail+' Checked '+$health.CheckedUtc) }
+        else { Add-Check 'Recent watchdog run' 'Pending' 'No successful current-session check within three minutes. Refresh or inspect the task; installation alone does not prove it is running.' }
+        if ($tasks.Count -eq 1 -and $null -ne $tasks[0].LastResult -and $tasks[0].LastResult -notin @(0,267009)) { Add-Check 'Task Scheduler result' 'Fail' ('Watchdog last task result: '+$tasks[0].LastResult) }
     } elseif ($state.Mode -eq 'Store') {
-        if ($tasks.Count) { $warnings.Add('Watchdogs still exist.') }
-        if ($manual -ne 1) { $warnings.Add('Automatic-update policy has changed.') }
-        if (@($services | Where-Object { $_.Startup -in @('Disabled','Missing') -or $_.RegistryStart -eq 4 }).Count) { $warnings.Add('A Store dependency is disabled or missing.') }
-    } elseif ($tasks.Count) { $warnings.Add('Watchdogs exist outside Hard mode; use Restore.') }
-    if ($state.Mode -in @('RecoveryRequired','Transition')) { $warnings.Add('A previous operation is incomplete; select Restore.') }
-    return [pscustomobject]@{Mode=$state.Mode; Detail=$state.Detail; NoAutoUpdate=$manual; Tasks=$tasks; Services=$services; Warnings=@($warnings.ToArray()); DataFolder=$script:Root}
+        Add-Check 'Automatic-update policy' $(if($policy.Kind -eq 'DWord' -and $manual -eq 1){'Pass'}else{'Fail'}) $(if($policy.Kind -eq 'DWord' -and $manual -eq 1){'Manual-update policy is set.'}else{'The manual-update policy has changed.'})
+        $disabled=@($services | Where-Object { $_.Startup -in @('Disabled','Missing') -or $_.RegistryStart -eq 4 })
+        Add-Check 'Store dependencies' $(if($disabled.Count){'Fail'}else{'Pass'}) $(if($disabled.Count){'A Store dependency is disabled or missing: '+($disabled.Name -join ', ')}else{'Shared download and installation services are available to Windows.'})
+    }
+    if ($state.Mode -ne 'Hard') {
+        Add-Check 'Watchdog removal' $(if($tasks.Count){'Fail'}else{'Pass'}) $(if($tasks.Count){'Known watchdog tasks remain. Use Unblock & remove tasks.'}else{'Zero known watchdog tasks in all Task Scheduler folders.'})
+        if ($state.Mode -in @('Normal','Store')) {
+            $remains=Test-Path -LiteralPath $script:InstalledEngine
+            Add-Check 'Watchdog files' $(if($remains){'Fail'}else{'Pass'}) $(if($remains){'An installed watchdog script remains. Reapply Unblock or Store Friendly.'}else{'The installed watchdog script is absent.'})
+        }
+    }
+    if ($state.Mode -in @('RecoveryRequired','Transition')) { Add-Check 'Last operation' 'Fail' 'A previous operation is incomplete. Use Unblock & remove tasks and review Activity.' }
+    if ($state.Mode -eq 'Normal' -and $state.PSObject.Properties['BaselineId'] -and $state.BaselineId -match '^[a-f0-9]{32}$') {
+        try {
+            $original=Get-Content -LiteralPath (Join-Path $script:Root ('backups\'+$state.BaselineId+'.json')) -Raw | ConvertFrom-Json
+            Assert-BaselineRestored $original
+            Add-Check 'Saved settings' 'Pass' 'Current service startup values and policy match the saved baseline.'
+        } catch { Add-Check 'Saved settings' 'Fail' ('Saved-settings verification failed: '+$_.Exception.Message) }
+    }
+    $verification=if(@($checks | Where-Object {$_.Result -eq 'Fail'}).Count){'Needs attention'}elseif(@($checks | Where-Object {$_.Result -eq 'Pending'}).Count){'Awaiting verification'}elseif($state.Mode -eq 'Unmanaged'){'Not configured'}else{'Verified'}
+    return [pscustomobject]@{Mode=$state.Mode; Detail=$state.Detail; Verification=$verification;Checks=@($checks.ToArray());WatchdogHealth=$health;NoAutoUpdate=$manual; Tasks=$tasks; Services=$services; Warnings=@($warnings.ToArray()); DataFolder=$script:Root}
 }
 function Show-Dashboard {
     $status=Get-ControlStatus
     if (-not $Preview) { Clear-Host }
     Write-Host ''
     Write-Host '  +--------------------------------------------------------------------+' -ForegroundColor DarkCyan
-    Write-Host '  |  UPDATE CONTROL                                      WINDOWS / 4.2 |' -ForegroundColor Cyan
+    Write-Host '  |  UPDATE CONTROL                                      WINDOWS / 4.3 |' -ForegroundColor Cyan
     Write-Host '  |  Choose when Windows updates. Keep control of app downloads.        |' -ForegroundColor Gray
     Write-Host '  +--------------------------------------------------------------------+' -ForegroundColor DarkCyan
     Write-Host ''
@@ -434,7 +550,7 @@ function Show-Dashboard {
     Write-Host ''
     Write-Host '  [1]  HARD BLOCK' -ForegroundColor White
     Write-Host '       Stops shared update services. Store downloads will be blocked.' -ForegroundColor DarkGray
-    Write-Host '  [2]  RESTORE / REMOVE BLOCKER' -ForegroundColor White
+    Write-Host '  [2]  UNBLOCK & REMOVE TASKS' -ForegroundColor White
     Write-Host '       Removes watchdogs, restores settings, and verifies removal.' -ForegroundColor DarkGray
     Write-Host '  [3]  STORE FRIENDLY                                  RECOMMENDED' -ForegroundColor Cyan
     Write-Host '       Manual Windows updates. Install apps such as ChatGPT normally.' -ForegroundColor Gray
@@ -450,7 +566,7 @@ function Save-Report {
     $path=Join-Path $env:TEMP ("Update-Control-report-{0}.txt" -f (Get-Date -Format 'yyyyMMdd-HHmmss'))
     $status=Get-ControlStatus
     $os=Get-CimInstance Win32_OperatingSystem
-    @("UPDATE CONTROL 4.2 DIAGNOSTIC", "OS: $($os.Caption) / $($os.BuildNumber)", ($status | ConvertTo-Json -Depth 6)) | Set-Content -LiteralPath $path -Encoding UTF8
+    @("UPDATE CONTROL 4.3 DIAGNOSTIC", "OS: $($os.Caption) / $($os.BuildNumber)", ($status | ConvertTo-Json -Depth 6)) | Set-Content -LiteralPath $path -Encoding UTF8
     Write-Host "  Report: $path" -ForegroundColor Cyan
     return $path
 }
@@ -472,7 +588,7 @@ try {
             Start-Process -FilePath $script:PSExe -ArgumentList $arguments -Verb RunAs | Out-Null
             exit 0
         }
-        $Host.UI.RawUI.WindowTitle='Update Control 4.2'
+        $Host.UI.RawUI.WindowTitle='Update Control 4.3'
         while ($true) {
             Show-Dashboard
             $choice=Read-Host '  Choose 1-5 or 0'

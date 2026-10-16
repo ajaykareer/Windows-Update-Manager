@@ -10,7 +10,7 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 [Release status and historical assets](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2) — neither the portable scripts nor older releases are a verified workaround for this detection.
 
-Version 4.2.2 is a preview release. See [validation and limitations](docs/VALIDATION.md) for what is tested.
+**4.3.0 is a development candidate with stronger verification and a simpler unblock action.** The code and screenshots are updated; a replacement public EXE has not been cleared or published. The 4.2.2 Defender report remains unresolved. See [validation and limitations](docs/VALIDATION.md) and [release requirements](docs/SIGNING.md).
 
 ![Update Control desktop overview](docs/screenshots/overview.png)
 
@@ -21,11 +21,12 @@ Version 4.2.2 is a preview release. See [validation and limitations](docs/VALIDA
 **Usage instructions below describe the preview's interface. They are on hold pending resolution of the [reported Defender detection](docs/SECURITY-NOTICE.md). Do not use the EXE or script launchers to bypass that detection.**
 
 1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
-2. If you used the old script, click the **Restore** card, then **Restore Windows**. Follow any restart message.
+2. If you used the old script, select **Unblock updates**, then **Unblock & remove tasks**. Follow any restart message.
 3. Click the **Store Friendly** card, then **Apply Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
-4. To remove the block later, select the **Restore** card and apply it.
+4. To block shared update services, select **Hard Block**, review the warning about Store downloads and the watchdog, and confirm. Wait for **Verified**; **Restart required** and **Needs attention** are not a completed verification.
+5. To remove the block later, select **Unblock updates**, then **Unblock & remove tasks**. Success requires zero known tasks and removal of the installed watchdog script.
 
-The entire card is clickable. Its outline and radio marker show your selection; Windows changes only after you press the separate action button. Hard Block adds a confirmation step. The **Current mode** panel shows the saved configuration, independently of the option you are considering.
+The entire card is clickable. Its outline and radio marker show your selection; Windows changes only after you press the separate action button. Hard Block adds a confirmation step. **Saved mode** shows the requested configuration; the separate **Verified / Awaiting verification / Needs attention** result shows what current checks established. A saved Hard Block setting alone is not proof that the block is effective.
 
 You download one EXE. It automatically extracts its embedded components into a protected version folder under `%ProgramFiles%\Kareer Update Control`. It uses Windows PowerShell 5.1 and .NET Framework already present on standard Windows 10/11 desktop installations. It does not require Python, Node, or a separate setup wizard.
 
@@ -39,11 +40,17 @@ For source access, the portable ZIP contains the same components. Extract everyt
 | --- | --- | --- | --- |
 | **Store Friendly** | Manual-update policy on supported editions | Shared download/install services available | None |
 | **Hard Block** | Stops and disables shared update services; best effort | Downloads may fail | One task, with startup and minute triggers |
-| **Restore Windows** | Restores the saved settings from before this tool's current blocking session | Removes this tool's restrictions | All recognized legacy/current tasks removed |
+| **Unblock & remove tasks** | Restores the saved settings from before this tool's current blocking session | Removes this tool's restrictions | All recognized legacy/current tasks removed |
 
 **Store Friendly is the recommended mode for keeping app installation available.** It sets `NoAutoUpdate=1`; it is not a complete lock on every kind of update. Manual updates and already pending installations are not cancelled. Organization or MDM settings can override local policy, and known deadline/WSUS conflicts are refused. Windows Home is not offered this policy mode; use Windows Settings' pause controls on Home.
 
 Hard Block also affects BITS and Delivery Optimization, which other applications use. Windows servicing or other administrative software may counteract service blocking. The application does not promise permanent suppression of all updates.
+
+## How the watchdog is verified
+
+Hard Block installs **one** `POS-WU-Guardian-v4` task running as SYSTEM, with startup and one-minute triggers. Apply checks the executable path, arguments, identity, enabled triggers and installed-script hash, then starts the task and waits for a check tied to this particular blocking session. A task that registers but cannot run causes failure and attempted rollback. If service changes need a restart, the app explicitly reports that verification is incomplete.
+
+During the initial check, Apply holds the operation lock and the watchdog only verifies the already-applied settings. Normal scheduled runs acquire the lock, enforce the block and verify it. A failed run, stale/missing check, changed watchdog file or service drift is visible in **System details → Verification checks**. Checks older than three minutes do not count as current proof.
 
 ## Reliable removal and recovery
 
@@ -53,9 +60,9 @@ The controller disarms its saved state **before** removing watchdogs. It searche
 - `POS-WU-Guardian`, `POS-WU-Guardian_Startup`, `POS-WU-Guardian_Hourly`
 - `POS-WU-Guardian-v4`
 
-It attempts disable, stop, and deletion independently; retries with the native Task Scheduler command; stops matching old guardian command processes; and verifies that no matching tasks remain. An incomplete removal is an error, not a success message.
+It attempts disable, stop, and deletion independently; retries with the native Task Scheduler command; stops matching old guardian command processes; and verifies that no matching tasks remain. It then removes the installed watchdog script and its health record. An incomplete removal is an error, not a success message. **This removes the app's tasks, not Windows Task Scheduler itself or unrelated tasks.**
 
-A protected baseline preserves original service startup settings and the original automatic-update policy across mode switches. An exclusive operation lock prevents simultaneous mode changes and guardian enforcement. A missing, corrupt, or transitional state never authorizes enforcement. Failed transitions attempt rollback and show **Needs attention**.
+A protected baseline preserves original service startup settings and the original automatic-update policy across mode switches. An exclusive operation lock prevents simultaneous mode changes and guardian enforcement. A missing, corrupt, or transitional state never authorizes enforcement. Failed transitions attempt rollback and show **Needs attention**. Successful restoration keeps the archived baseline, and subsequent status checks can compare current settings with it.
 
 Exact original-setting restoration applies to changes first made by version 4. The earlier batch scripts did not save full originals; their migration repair removes recognized restrictions and returns disabled dependencies to runnable settings. Existing unrelated administrator settings are preserved where identifiable.
 
@@ -63,7 +70,7 @@ Exact original-setting restoration applies to changes first made by version 4. T
 
 Overview separates the current mode from your pending selection. Click any part of a mode card, then use the action bar that stays visible at the bottom. Radio controls support keyboard and accessibility navigation. Read-only access, a running operation, missing status and an unsupported Store edition explain why Apply is unavailable. Selections survive automatic status refreshes.
 
-System details shows service and task status. Activity provides progress, logs, backups, and diagnostic reports. Hard Block has a confirmation dialog that prevents interaction with the underlying page until you confirm or cancel. Failure and restart results are distinct. No restart or Windows Update scan is issued automatically.
+System details shows individual verification results, service status and task details. Activity provides progress, logs, backups, and diagnostic reports. Hard Block has a confirmation dialog that explains the watchdog and prevents interaction with the underlying page until you confirm or cancel. Failure and restart results are distinct. No restart or Windows Update scan is issued automatically.
 
 | System details | Activity and recovery |
 | --- | --- |

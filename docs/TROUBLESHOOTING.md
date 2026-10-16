@@ -8,6 +8,8 @@
 
 Open Update Control, select the **Restore** card, click **Restore Windows**, and follow any restart message. Reopen the controller, select **Store Friendly**, then click **Apply Store Friendly** on a supported edition. This keeps shared services available while setting automatic Windows updates to manual policy. Close and reopen Microsoft Store. If it retains an old error, run `wsreset.exe` from Win+R.
 
+In the 4.3.0 candidate, restoration is labeled **Unblock updates → Unblock & remove tasks**. Keep that candidate in review until the signing and vendor-review requirements are satisfied.
+
 Do not keep Hard Block enabled while expecting Store downloads to work. Other causes, such as account, network, organization policy or Store damage, are outside this controller's repair scope.
 
 ## A watchdog remains after Restore
@@ -15,6 +17,19 @@ Do not keep Hard Block enabled while expecting Store downloads to work. Other ca
 The new controller looks in every Task Scheduler folder for both `WU-Guardian*` and `POS-WU-Guardian*` families, but matches only the explicit names listed in the README. It disarms enforcement, then separately tries disable, stop and deletion. If deletion still fails, it reports **Needs attention** and includes a log path.
 
 Use **Activity → Open logs** and create a diagnostic report. Confirm you opened the controller with administrator access. Rerun Restore after resolving the reported error. Do not delete the data folder while a guardian is still active. Tasks with custom names are not automatically deleted.
+
+In 4.3.0, success also requires removing the installed watchdog script and health file. The application removes its own tasks; Windows Task Scheduler and unrelated tasks remain available. Archived baselines and logs are kept for recovery.
+
+## Hard Block is saved but verification needs attention
+
+**Saved mode** records the selection. It is not a claim that the services and watchdog are currently working. Read **System details → Verification checks**:
+
+- A service or policy failure means the checked configuration is not currently fully blocked.
+- A task definition or script-hash failure means the installed guardian differs from the recorded configuration, is disabled, or is missing.
+- **Awaiting verification** means no valid check from this blocking session was received in the last three minutes. After a resume or restart, refresh after a scheduled minute. Continued absence needs investigation, not a success assumption.
+- A nonzero task result or failed health check shows the task could not complete its work. Keep the diagnostic report and use the reviewed recovery procedure.
+
+During Apply, the app starts the registered task and waits up to 25 seconds for proof it can run and verify the settings. A timeout fails the operation and attempts rollback. A restart-required result is separate; task installation alone does not prove the block until services have reloaded and the checks pass.
 
 ## Mode cards or Apply seem unresponsive
 

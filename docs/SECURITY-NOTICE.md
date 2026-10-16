@@ -1,6 +1,8 @@
 # Reported Microsoft Defender detection
 
-Status as of 2026-10-09: **unresolved; no vendor verdict obtained**.
+Status as of 2026-10-16: **unresolved; no vendor verdict obtained**.
+
+The 4.3.0 development candidate adds functional verification and more complete watchdog cleanup. It is not a resolution of the detection below. Its EXE remains unsigned, and any release is kept in draft pending publisher signing, vendor review of the exact final bytes, and the [publication preflight](SIGNING.md). Do not treat its source changes, functional tests or a different hash as antivirus clearance.
 
 A user supplied a Windows Security screenshot showing `Trojan:Win32/Sabsik.FL.A!ml` (Severe) for a downloaded file named `Update-Control 4.2.2.exe`. This establishes a detection associated with that filename. We have not obtained the affected file's SHA-256, the affected PC's Defender versions, or evidence identifying the detection trigger. The screenshot alone does not prove the affected file matches the published release, that the file is malicious, or that this is a false positive.
 

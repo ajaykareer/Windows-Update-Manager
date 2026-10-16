@@ -64,7 +64,7 @@ function Set-UiAvailability {
         elseif(-not $script:SelectedMode){'Select a card above to continue. Windows stays unchanged until you apply.'}
         elseif($script:SelectedMode -eq 'Store' -and -not $script:StoreSupported){'Store Friendly is unavailable on this Windows edition. Use Windows Settings > Pause updates.'}
         else{$null}
-    $labels=@{Store='Store Friendly';Hard='Hard Block';Restore='Restore Windows'}
+    $labels=@{Store='Store Friendly';Hard='Hard Block';Restore='Unblock updates'}
     $buttons=@{Store='Apply Store Friendly';Hard='Review Hard Block...';Restore='Unblock & remove tasks'}
     $hints=@{Store='Keep Store installs available with manual OS-update policy. Removes this app''s watchdogs.';Hard='Blocks shared services and installs one watchdog. Store downloads stop too. Review before applying.';Restore='Stop and delete this app''s known tasks, remove its watchdog script, and restore saved settings.'}
     $script:Ui.SelectionTitle.Text=if($script:SelectedMode){'2  Selected: '+$labels[$script:SelectedMode]}else{'2  Apply your selection'}
@@ -395,6 +395,11 @@ try {
             if(-not $script:LastWorkerResult -or $script:LastWorkerResult.Action -ne 'Status' -or $script:LastWorkerResult.ExitCode -ne 0 -or -not $script:LastWorkerResult.Status){throw ('Read-only GUI worker result failed: '+($script:LastWorkerResult|ConvertTo-Json -Depth 4 -Compress)+'; '+$script:Ui.NoticeText.Text)}
             'PASS: actual hidden status worker, process completion, JSON result, and live status binding.'
             $script:ViewOnly=$false
+            $drift=New-SampleStatus 'Hard'
+            $drift.Verification='Needs attention'
+            $drift.Warnings=@('Simulated service drift')
+            Update-StatusView $drift $computer
+            if($script:Ui.ModeText.Text -ne 'Hard Block' -or $script:Ui.VerificationText.Text -notmatch '^Needs attention' -or @($script:Ui.ChecksGrid.ItemsSource).Count -eq 0){throw 'Saved mode and actual verification are not shown separately.'}
             Update-StatusView (New-SampleStatus 'Store') $computer
             Add-Type -AssemblyName UIAutomationProvider,UIAutomationTypes
             $script:TestActions=New-Object 'System.Collections.Generic.List[string]'

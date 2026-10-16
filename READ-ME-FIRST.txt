@@ -7,7 +7,7 @@ to use it. These are usage instructions for the reviewed release process;
 functional test success does not establish antivirus acceptance.
 
 QUICK START
-Open Update-Control.exe and accept the administrator prompt.
+Open Update-Control-4.3.1.exe and accept the administrator prompt.
 The EXE contains all required application files and extracts them automatically.
 If you downloaded the ZIP instead, extract ALL files and open Update-Control.cmd.
 

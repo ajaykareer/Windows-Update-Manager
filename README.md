@@ -10,7 +10,7 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 [Release status and historical assets](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2) — neither the portable scripts nor older releases are a verified workaround for this detection.
 
-**4.3.1 Preview is available with stronger verification and a simpler unblock action.** [Download the EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.1/Update-Control.exe) or read the [release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.1). This is a public prerelease; publication does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
+**4.3.1 Preview is available with stronger verification and a simpler unblock action.** [Download Update-Control-4.3.1.exe](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.1/Update-Control-4.3.1.exe) or read the [release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.1). This is a public prerelease; publication does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
 
 **Use at your own risk.** Changing update settings can delay security fixes or interrupt Store downloads. Keep antivirus protection enabled; do not add an exclusion to bypass a detection. This disclaimer does not resolve the reported detection above.
 
@@ -22,7 +22,7 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 **These instructions describe the 4.3.1 preview. Review the [reported Defender detection](docs/SECURITY-NOTICE.md) and known limitations before use. If security software detects a file, keep it quarantined; do not use exclusions or script launchers to bypass the detection.**
 
-1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
+1. Download **Update-Control-4.3.1.exe** and open it on the PC you want to manage. Accept the administrator prompt.
 2. If you used the old script, select **Unblock updates**, then **Unblock & remove tasks**. Follow any restart message.
 3. Click the **Store Friendly** card, then **Apply Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
 4. To block shared update services, select **Hard Block**, review the warning about Store downloads and the watchdog, and confirm. Wait for **Verified**; **Restart required** and **Needs attention** are not a completed verification.

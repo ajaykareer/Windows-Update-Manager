@@ -6,12 +6,13 @@ $repo=Split-Path $PSScriptRoot -Parent
 $dist=Join-Path $repo 'dist'
 $build=Join-Path $dist 'build'
 New-Item -ItemType Directory -Path $build -Force | Out-Null
-$version='4.3.1'
+$release=& (Join-Path $PSScriptRoot 'Get-ReleaseInfo.ps1')
+$version=$release.Version
 $files=@('Update-Control.cmd','Update-Control-Console.cmd','WindowsUpdateManager.bat','WU-ManagerFinal.bat',
     'UpdateControl.GUI.ps1','UpdateControl.xaml','UpdateControl.Worker.ps1','UpdateControl.ps1',
     'Repair-WindowsStore.ps1','Repair-WindowsStore.cmd','Diagnose-WindowsStore.cmd','READ-ME-FIRST.txt','LICENSE','Update-Control.ico')
 Add-Type -AssemblyName System.IO.Compression,System.IO.Compression.FileSystem
-$zip=Join-Path $dist "Update-Control-Desktop-v$version.zip"
+$zip=$release.ArchivePath
 if(Test-Path -LiteralPath $zip){Remove-Item -LiteralPath $zip}
 $archive=[IO.Compression.ZipFile]::Open($zip,[IO.Compression.ZipArchiveMode]::Create)
 try {
@@ -30,7 +31,7 @@ $icon=Join-Path $repo 'Update-Control.ico'
 if(-not(Test-Path -LiteralPath $icon)){throw 'Application icon missing. Run scripts/Build-Icon.ps1 first.'}
 $compiler=Join-Path $env:SystemRoot 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 if(-not(Test-Path $compiler)){$compiler=Join-Path $env:SystemRoot 'Microsoft.NET\Framework\v4.0.30319\csc.exe'}
-$exe=Join-Path $dist 'Update-Control.exe'
+$exe=$release.ExecutablePath
 & $compiler /nologo /target:winexe /platform:anycpu /optimize+ "/out:$exe" "/win32manifest:$repo\launcher\app.manifest" "/win32icon:$icon" "/resource:$zip,UpdateControl.Payload.zip" /reference:System.Windows.Forms.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll (Join-Path $repo 'launcher\Program.cs') $info
 if($LASTEXITCODE -ne 0){throw "C# compilation failed: $LASTEXITCODE"}
 Copy-Item -LiteralPath $icon -Destination (Join-Path $dist 'Update-Control.ico') -Force

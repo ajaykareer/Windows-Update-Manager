@@ -13,7 +13,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Package.ps1
 
 The build creates these ignored outputs in `dist`:
 
-- `Update-Control.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon.
+- `Update-Control-4.3.1.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon. The filename follows the version in `launcher/app.manifest` automatically.
 - `Update-Control-Desktop-v4.3.1.zip`: the same application components for manual extraction.
 - `SHA256SUMS.txt`: checksums for both downloads.
 - `Update-Control.ico` and `Update-Control.png`: reusable application icon assets (also covered by the checksums).

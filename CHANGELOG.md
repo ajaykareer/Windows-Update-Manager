@@ -2,6 +2,7 @@
 
 ## 4.3.1 — Patient service stops and accurate restart prompts (preview, 2026-10-16)
 
+- The published download is named `Update-Control-4.3.1.exe`; renaming did not change its bytes or SHA-256. Future build, signing and package paths derive their versioned filename from the launcher manifest.
 - Waits up to 120 seconds per service, observes pending start/stop transitions, and retries error 1061 with a five-second interval. Progress identifies the service and elapsed time. A stuck service still fails and triggers attempted rollback; access-denied errors are not retried as transient failures.
 - Re-reads saved and live startup settings after configuration. An optional delayed-start warning does not require a restart when the requested startup setting already took effect. Restart reasons identify the services whose saved and live settings differ and are rechecked before accepting Hard Block.
 - Clears obsolete restart requirements across restore-to-block transitions and protects rollback from failed apply targets. Legacy repair uses the same readback principle.

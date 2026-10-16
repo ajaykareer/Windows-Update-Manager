@@ -49,7 +49,7 @@ The same review limitations apply to the 4.3.1 service-wait and restart fixes. P
 Before promoting a replacement EXE as having completed this review, sign it using a trusted identity, obtain and inspect Microsoft's determination for those final signed bytes, and record the actual response using [release-review.template.json](release-review.template.json). Keep the template pending until there is evidence; do not substitute a local negative scan or invent a review outcome.
 
 ```powershell
-.\scripts\Test-ReleaseReadiness.ps1 -ExecutablePath .\dist\Update-Control.exe -ReviewRecordPath .\release-review.json
+.\scripts\Test-ReleaseReadiness.ps1 -ReviewRecordPath .\release-review.json
 ```
 
 This preflight rejects missing/invalid signatures or timestamps, pending reviews and mismatched file hashes. It checks a publisher-supplied record; it does not authenticate a live Microsoft verdict. The publisher must inspect the linked response. Rebuilding or signing again changes the bytes and requires a matching review. The public 4.3.0 prerelease does not claim to satisfy this review. No signing identity, Microsoft submission or favorable determination has been obtained by this change.

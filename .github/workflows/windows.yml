@@ -26,6 +26,8 @@ jobs:
         run: .\tests\Test-UpdateControl.ps1
       - name: Legacy repair regression tests
         run: .\tests\Test-Repair.ps1
+      - name: Release readiness regression tests
+        run: .\tests\Test-ReleaseReadiness.ps1
       - name: WPF interaction and read-only worker smoke test
         run: powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -SmokeTest
       - name: Real Windows APIs against isolated temporary services
@@ -41,7 +43,7 @@ jobs:
           name: Update-Control-Windows
           path: |
             dist/Update-Control.exe
-            dist/Update-Control-Desktop-v4.2.2.zip
+            dist/Update-Control-Desktop-v4.3.0.zip
             dist/Update-Control.ico
             dist/Update-Control.png
             dist/SHA256SUMS.txt

@@ -40,6 +40,18 @@ Use the installed security product to scan the exact release and record the resu
 
 Microsoft accepts developer submissions of suspicious files and suspected incorrect detections at its Security Intelligence portal. Include the detected product/name, exact hash when available, repository link, and explanation of the user-selected update controls. Distinguish the affected copy from the published release if their hashes have not been compared. Do not restore a quarantined sample just to calculate its hash or execute it. A submission is not a promise of acceptance; review and classification remain with the vendor.
 
+## 4.3.0 candidate publication preflight
+
+The candidate remains unsigned and has not received a Microsoft determination. Its functional improvements do not establish the cause of the 4.2.2 detection. Development CI builds are review artifacts, not cleared public releases.
+
+Before publishing a replacement EXE, sign it using a trusted identity, obtain and inspect Microsoft's determination for those final signed bytes, and record the actual response using [release-review.template.json](release-review.template.json). Keep the template pending until there is evidence; do not substitute a local negative scan or invent a review outcome.
+
+```powershell
+.\scripts\Test-ReleaseReadiness.ps1 -ExecutablePath .\dist\Update-Control.exe -ReviewRecordPath .\release-review.json
+```
+
+This preflight rejects missing/invalid signatures or timestamps, pending reviews and mismatched file hashes. It checks a publisher-supplied record; it does not authenticate a live Microsoft verdict. The publisher must inspect the linked response. Rebuilding or signing again changes the bytes and requires a matching review. Until the preflight and manual review are complete, keep any GitHub release in draft. No signing identity, Microsoft submission or favorable determination has been obtained by this change.
+
 Official references:
 
 - [Microsoft code-signing options and reputation limitations](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options)

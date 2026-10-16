@@ -1,5 +1,7 @@
 # Building Update Control
 
+Version 4.3.0 is a development candidate. Build outputs are for review; they have not been cleared as a replacement for the reported 4.2.2 detection. See [release preflight and signing](SIGNING.md).
+
 Use Windows PowerShell 5.1 on Windows 10/11 with .NET Framework 4.8 or later. Building does not require elevation, downloaded packages, or changes to update settings. The workflow uses a Windows Server 2022 runner for the Windows API tests; that does not establish client OS policy support.
 
 From the repository directory:
@@ -12,7 +14,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Package.ps1
 The build creates these ignored outputs in `dist`:
 
 - `Update-Control.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon.
-- `Update-Control-Desktop-v4.2.2.zip`: the same application components for manual extraction.
+- `Update-Control-Desktop-v4.3.0.zip`: the same application components for manual extraction.
 - `SHA256SUMS.txt`: checksums for both downloads.
 - `Update-Control.ico` and `Update-Control.png`: reusable application icon assets (also covered by the checksums).
 
@@ -22,7 +24,7 @@ The launcher validates the embedded archive and caches files under `%ProgramFile
 
 No signing certificate is included. An unsigned build has no verified publisher identity.
 
-See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. The public preview is still unsigned.
+See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. The candidate is still unsigned. Keep its GitHub release in draft until the signature, exact-hash vendor review and publication preflight are complete.
 
 ## Local checks
 

@@ -20,6 +20,7 @@ function Write-Step([string]$Message) { }
 
 # Real filesystem lock and state gate, with enforcement itself replaced by a fail-fast mock.
 & {
+    function Assert-HardBlock { }
     function Set-HardBlock { throw 'Unexpected enforcement!' }
     Save-State 'Store' 'test'
     Assert ((Invoke-Enforcement) -eq 0) 'Guardian must do nothing in Store mode.'
@@ -87,6 +88,7 @@ Write-Host 'PASS: nested legacy cleanup, disable/stop failure tolerance, delete 
 & {
     function Copy-Item { }
     function Set-Acl { }
+    function Get-FileHash { [pscustomobject]@{Hash=('A'*64)} }
     function Register-ScheduledTask {
         param($TaskName,$TaskPath,$Action,$Trigger,$Settings,$Principal,$Description,[switch]$Force)
         $script:CapturedTask=[pscustomobject]@{TaskName=$TaskName;TaskPath=$TaskPath;Actions=@($Action);Triggers=@($Trigger);Settings=$Settings;Principal=$Principal;State='Ready'}
@@ -98,6 +100,9 @@ Write-Host 'PASS: nested legacy cleanup, disable/stop failure tolerance, delete 
     Assert ($script:CapturedTask.Actions[0].Arguments -match '-WindowStyle Hidden') 'Watchdog must not flash a window.'
     Assert ($script:CapturedTask.Principal.UserId -in @('SYSTEM','S-1-5-18','NT AUTHORITY\SYSTEM')) 'Watchdog principal is wrong.'
     Assert (@($script:CapturedTask.Triggers | Where-Object { $_.Repetition -and $_.Repetition.Interval -eq 'PT1M' }).Count -eq 1) 'Missing one-minute repetition.'
+    $script:CapturedTask.Actions[0].Arguments='-File "unrelated.ps1"'
+    $caught=$false;try{Assert-WatchdogDefinition}catch{$caught=$true}
+    Assert $caught 'A task with a different command was accepted.'
 }
 Write-Host 'PASS: actual task definition has one task, startup + minute triggers, hidden SYSTEM action.'
 
@@ -136,7 +141,9 @@ Write-Host 'PASS: actual task definition has one task, startup + minute triggers
         else { $script:FakeDelayed[(Split-Path $Path -Leaf)]=$Snapshot }
     }
     function Set-ServiceMode($Name,$Start) { $script:FakeStarts[$Name]=$Start; $script:Order.Add("service:$Name=$Start") }
-    function Register-Watchdog { $script:FakeCount=1 }
+    function Register-Watchdog { $script:FakeCount=1; [IO.File]::WriteAllText($script:InstalledEngine,'test fixture') }
+    function Assert-WatchdogDefinition { Assert ($script:FakeCount -eq 1) 'Watchdog missing.' }
+    function Start-ScheduledTask { param($TaskName,$TaskPath) Write-WatchdogHealth (Read-State) 'Pass' 'Fixture task verified the block.' }
     Save-State 'Normal' 'test'
     $result=Invoke-ModeChange 'Hard'
     Assert ($result -eq 0 -and (Read-State).Mode -eq 'Hard' -and $script:FakeCount -eq 1) 'Hard transition failed.'
@@ -169,6 +176,80 @@ Write-Host 'PASS: actual task definition has one task, startup + minute triggers
     Assert (Test-Path -LiteralPath $script:BaselineFile) 'Recovery backup was lost.'
     Invoke-ModeChange 'Restore' | Out-Null
     Assert ((Read-State).Mode -eq 'Normal') 'Recovery restore failed.'
+    # A registered task that never runs must roll back, retire its script and preserve recovery data.
+    function Register-Watchdog { $script:FakeCount=1; [IO.File]::WriteAllText($script:InstalledEngine,'test fixture') }
+    function Verify-WatchdogExecution { throw 'Simulated task never executed' }
+    $caught=$false;try{Invoke-ModeChange 'Hard' | Out-Null}catch{$caught=$true}
+    Assert ($caught -and (Read-State).Mode -eq 'RecoveryRequired' -and $script:FakeCount -eq 0) 'An unresponsive watchdog was reported as successful.'
+    Assert ($script:FakeStarts.wuauserv -eq 3 -and -not (Test-Path -LiteralPath $script:InstalledEngine)) 'Failed watchdog left blocked settings or installed script.'
+    Invoke-ModeChange 'Restore' | Out-Null
+    Assert (-not (Test-Path -LiteralPath (Join-Path $script:Root 'watchdog-health.json'))) 'Restore left heartbeat state.'
 }
 Write-Host 'PASS: full Hard -> Store -> Restore lifecycle, immutable baseline, repeat restore, absent policy, rollback and recovery.'
 Write-Host 'All v4 checks passed. Only isolated files under tests/runs were written.'
+
+& {
+    Save-State 'Hard' 'health fixture'
+    $state=Read-State
+    Write-WatchdogHealth $state 'Pass' 'fixture'
+    Assert ((Read-WatchdogHealth $state).Outcome -eq 'Pass') 'Current heartbeat was not accepted.'
+    Save-State 'Hard' 'new session'
+    Assert ($null -eq (Read-WatchdogHealth (Read-State))) 'An older session heartbeat was accepted.'
+    $healthPath=Join-Path $script:Root 'watchdog-health.json'
+    $health=Get-Content $healthPath -Raw | ConvertFrom-Json
+    $health.CheckedUtc=[DateTime]::UtcNow.AddMinutes(-5).ToString('o')
+    Write-AtomicJson $healthPath $health
+    Assert ($null -eq (Read-WatchdogHealth $state)) 'A stale heartbeat was accepted.'
+    $health.CheckedUtc=[DateTime]::UtcNow.AddMinutes(5).ToString('o')
+    Write-AtomicJson $healthPath $health
+    Assert ($null -eq (Read-WatchdogHealth $state)) 'A future-dated heartbeat was accepted.'
+    [IO.File]::WriteAllText($healthPath,'bad json')
+    Assert ($null -eq (Read-WatchdogHealth $state)) 'Corrupt heartbeat was accepted.'
+    function Start-ScheduledTask { }
+    $caught=$false;try{Verify-WatchdogExecution -TimeoutSeconds 0}catch{$caught=$true}
+    Assert $caught 'Task startup without a heartbeat did not fail verification.'
+}
+Write-Host 'PASS: current-session watchdog proof, stale/corrupt/future rejection, startup timeout, rollback and script retirement.'
+
+& {
+    [IO.File]::WriteAllText($script:InstalledEngine,'status fixture')
+    Save-State 'Hard' 'status fixture' (Get-FileHash $script:InstalledEngine).Hash
+    $state=Read-State
+    Write-WatchdogHealth $state 'Pass' 'fixture run'
+    $script:Drift=$false
+    function Assert-WatchdogDefinition { }
+    function Get-OurTasks { [pscustomobject]@{TaskName=$script:TaskName;TaskPath='\';State='Ready'} }
+    function Get-ScheduledTaskInfo { [pscustomobject]@{LastRunTime=[datetime]::UtcNow;LastTaskResult=0} }
+    function Get-Service($Name) {
+        $hard=$Name -in $script:HardServices -and -not ($script:Drift -and $Name -eq 'wuauserv')
+        [pscustomobject]@{StartType=if($hard){'Disabled'}else{'Manual'};Status=if($hard){'Stopped'}else{'Running'}}
+    }
+    function Read-RegValue($Path,$Name) {
+        $value=if($Name -eq 'NoAutoUpdate'){1}elseif((Split-Path $Path -Leaf) -in $script:HardServices){4}else{3}
+        [pscustomobject]@{Exists=$true;Value=$value;Kind='DWord'}
+    }
+    Assert ((Get-ControlStatus).Verification -eq 'Verified') 'Healthy fixture failed status verification.'
+    $script:Drift=$true
+    $status=Get-ControlStatus
+    Assert ($status.Mode -eq 'Hard' -and $status.Verification -eq 'Needs attention') 'Saved Hard mode hid a service that was re-enabled.'
+    $script:Drift=$false
+    [IO.File]::WriteAllText($script:InstalledEngine,'changed fixture')
+    Assert ((Get-ControlStatus).Verification -eq 'Needs attention') 'Changed installed engine was accepted as verified.'
+    [IO.File]::WriteAllText($script:InstalledEngine,'status fixture')
+    Write-WatchdogHealth $state 'Fail' 'simulated enforcement denied'
+    Assert ((Get-ControlStatus).Verification -eq 'Needs attention') 'Failed watchdog run was accepted as verified.'
+    Remove-Item -LiteralPath (Join-Path $script:Root 'watchdog-health.json')
+    Assert ((Get-ControlStatus).Verification -eq 'Awaiting verification') 'Task existence was treated as proof of execution.'
+}
+Write-Host 'PASS: live status exposes service drift, changed engine, failed run and missing execution proof.'
+
+& {
+    $original=[pscustomobject]@{Services=@([pscustomobject]@{Name='wuauserv';Start=[pscustomobject]@{Value=3};Delayed=[pscustomobject]@{Exists=$false;Value=$null}});Policy=[pscustomobject]@{Exists=$false;Value=$null;Kind=$null}}
+    function Read-RegValue($Path,$Name) { if($Name -eq 'Start'){[pscustomobject]@{Exists=$true;Value=3;Kind='DWord'}}else{[pscustomobject]@{Exists=$false;Value=$null;Kind=$null}} }
+    function Get-OurTasks { }
+    function Get-Service { [pscustomobject]@{StartType='Disabled'} }
+    Assert-BaselineRestored $original # Stored configuration can match while SCM still needs a restart.
+    $caught=$false;try{Assert-BaselineRestored $original -RequireLiveStartup}catch{$caught=$true}
+    Assert $caught 'Pending live startup change was shown as fully restored.'
+}
+Write-Host 'PASS: restoration status distinguishes saved registry values from live service startup settings.'

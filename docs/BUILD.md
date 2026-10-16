@@ -24,7 +24,7 @@ The launcher validates the embedded archive and caches files under `%ProgramFile
 
 No signing certificate is included. An unsigned build has no verified publisher identity.
 
-See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. The candidate is still unsigned. Keep its GitHub release in draft until the signature, exact-hash vendor review and publication preflight are complete.
+See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. Version 4.3.0 is available as a public prerelease at the maintainer's request; it has not completed the signature, exact-hash vendor review or publication preflight. The published files are the original validated candidate artifacts, not rebuilt from later documentation commits.
 
 ## Local checks
 

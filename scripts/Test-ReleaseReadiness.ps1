@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory=$true)][string]$ReviewRecordPath
 )
 $ErrorActionPreference='Stop'
-if(-not $ExecutablePath){$ExecutablePath=Join-Path (Split-Path $PSScriptRoot -Parent) 'dist\Update-Control.exe'}
+if(-not $ExecutablePath){$ExecutablePath=(& (Join-Path $PSScriptRoot 'Get-ReleaseInfo.ps1')).ExecutablePath}
 $hash=(Get-FileHash -LiteralPath $ExecutablePath -Algorithm SHA256).Hash
 $signature=Get-AuthenticodeSignature -LiteralPath $ExecutablePath
 if($signature.Status -ne 'Valid' -or -not $signature.SignerCertificate -or -not $signature.TimeStamperCertificate){

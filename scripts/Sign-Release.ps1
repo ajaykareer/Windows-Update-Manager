@@ -28,7 +28,7 @@ if(-not $SignToolPath){
 }
 if(-not $SignToolPath -or -not(Test-Path -LiteralPath $SignToolPath)){throw 'Install SignTool from the Windows SDK or pass -SignToolPath.'}
 $dist=Join-Path (Split-Path $PSScriptRoot -Parent) 'dist'
-$exe=Join-Path $dist 'Update-Control.exe'
+$exe=(& (Join-Path $PSScriptRoot 'Get-ReleaseInfo.ps1')).ExecutablePath
 if(-not(Test-Path -LiteralPath $exe)){throw 'Build the release first.'}
 $arguments=@('sign','/s','My','/sha1',$CertificateThumbprint,'/fd','SHA256','/tr',$TimestampServer.AbsoluteUri,'/td','SHA256','/d','Update Control Desktop','/du','https://github.com/ajaykareer/Windows-Update-Manager')
 if($CertificateStore -eq 'LocalMachine'){$arguments+='/sm'}

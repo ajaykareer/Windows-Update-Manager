@@ -2,8 +2,10 @@
 param([switch]$Extract)
 $ErrorActionPreference='Stop'
 $repo=Split-Path $PSScriptRoot -Parent
-$exe=Join-Path $repo 'dist\Update-Control.exe'
-$zip=Join-Path $repo 'dist\Update-Control-Desktop-v4.3.1.zip'
+$release=& (Join-Path $repo 'scripts\Get-ReleaseInfo.ps1')
+$exe=$release.ExecutablePath
+$zip=$release.ArchivePath
+if((Get-Item -LiteralPath $exe).VersionInfo.FileVersion -ne $release.FileVersion){throw 'EXE file version differs from its release filename version.'}
 $assembly=[Reflection.Assembly]::Load([IO.File]::ReadAllBytes($exe))
 $resource=$assembly.GetManifestResourceStream('UpdateControl.Payload.zip')
 $buffer=New-Object IO.MemoryStream

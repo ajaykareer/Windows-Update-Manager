@@ -448,7 +448,7 @@ function Invoke-ModeChange([string]$Mode) {
     } finally { $lock.Dispose() }
 }
 function Invoke-Enforcement {
-    # No state, corrupt state, non-Hard state, or a busy controller means no work.
+    # Missing/corrupt/non-Hard state never authorizes enforcement; a busy controller permits only verification.
     if (-not (Test-Path -LiteralPath $script:Root)) { return 0 }
     $lock=Enter-OperationLock 0
     $state=$null

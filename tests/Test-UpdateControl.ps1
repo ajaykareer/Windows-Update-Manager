@@ -242,3 +242,14 @@ Write-Host 'PASS: current-session watchdog proof, stale/corrupt/future rejection
     Assert ((Get-ControlStatus).Verification -eq 'Awaiting verification') 'Task existence was treated as proof of execution.'
 }
 Write-Host 'PASS: live status exposes service drift, changed engine, failed run and missing execution proof.'
+
+& {
+    $original=[pscustomobject]@{Services=@([pscustomobject]@{Name='wuauserv';Start=[pscustomobject]@{Value=3};Delayed=[pscustomobject]@{Exists=$false;Value=$null}});Policy=[pscustomobject]@{Exists=$false;Value=$null;Kind=$null}}
+    function Read-RegValue($Path,$Name) { if($Name -eq 'Start'){[pscustomobject]@{Exists=$true;Value=3;Kind='DWord'}}else{[pscustomobject]@{Exists=$false;Value=$null;Kind=$null}} }
+    function Get-OurTasks { }
+    function Get-Service { [pscustomobject]@{StartType='Disabled'} }
+    Assert-BaselineRestored $original # Stored configuration can match while SCM still needs a restart.
+    $caught=$false;try{Assert-BaselineRestored $original -RequireLiveStartup}catch{$caught=$true}
+    Assert $caught 'Pending live startup change was shown as fully restored.'
+}
+Write-Host 'PASS: restoration status distinguishes saved registry values from live service startup settings.'

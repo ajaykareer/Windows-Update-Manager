@@ -364,9 +364,13 @@ function Assert-StoreEdition {
         if ((Read-RegValue $script:WuKey $name).Exists) { throw "An update deadline policy is configured ($name). It can override manual updates; resolve it with the PC administrator first." }
     }
 }
-function Assert-BaselineRestored($Baseline) {
+function Assert-BaselineRestored($Baseline,[switch]$RequireLiveStartup) {
     foreach ($svc in $Baseline.Services) {
         if ((Read-RegValue "$script:SvcRoot\$($svc.Name)" 'Start').Value -ne $svc.Start.Value) { throw "Restoration did not stick: $($svc.Name)" }
+        if ($RequireLiveStartup) {
+            $expected=@{2='Automatic';3='Manual'}[[int]$svc.Start.Value]
+            if (-not $expected -or "$(Get-Service -Name $svc.Name | Select-Object -ExpandProperty StartType)" -ne $expected) { throw "The live startup setting for $($svc.Name) differs from the saved baseline. Restart if requested, then verify again." }
+        }
         $actual=Read-RegValue "$script:SvcRoot\$($svc.Name)" 'DelayedAutoStart'
         if ($actual.Exists -ne $svc.Delayed.Exists -or ($actual.Exists -and $actual.Value -ne $svc.Delayed.Value)) { throw "Delayed-start restore mismatch: $($svc.Name)" }
     }
@@ -527,7 +531,7 @@ function Get-ControlStatus {
     if ($state.Mode -eq 'Normal' -and $state.PSObject.Properties['BaselineId'] -and $state.BaselineId -match '^[a-f0-9]{32}$') {
         try {
             $original=Get-Content -LiteralPath (Join-Path $script:Root ('backups\'+$state.BaselineId+'.json')) -Raw | ConvertFrom-Json
-            Assert-BaselineRestored $original
+            Assert-BaselineRestored $original -RequireLiveStartup
             Add-Check 'Saved settings' 'Pass' 'Current service startup values and policy match the saved baseline.'
         } catch { Add-Check 'Saved settings' 'Fail' ('Saved-settings verification failed: '+$_.Exception.Message) }
     }

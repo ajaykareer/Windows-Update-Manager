@@ -12,6 +12,8 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 **4.3.0 is a development candidate with stronger verification and a simpler unblock action.** The code and screenshots are updated; a replacement public EXE has not been cleared or published. The 4.2.2 Defender report remains unresolved. See [validation and limitations](docs/VALIDATION.md) and [release requirements](docs/SIGNING.md).
 
+**Use at your own risk.** Changing update settings can delay security fixes or interrupt Store downloads. Keep antivirus protection enabled; do not add an exclusion to bypass a detection. This disclaimer does not resolve the reported detection above.
+
 ![Update Control desktop overview](docs/screenshots/overview.png)
 
 *Actual WPF interface rendered with sample status. The screenshot is not proof of a live Windows Update block.*
@@ -30,7 +32,7 @@ The entire card is clickable. Its outline and radio marker show your selection; 
 
 You download one EXE. It automatically extracts its embedded components into a protected version folder under `%ProgramFiles%\Kareer Update Control`. It uses Windows PowerShell 5.1 and .NET Framework already present on standard Windows 10/11 desktop installations. It does not require Python, Node, or a separate setup wizard.
 
-The EXE is **unsigned**. Windows may display an unknown-publisher or reputation warning. Download only from this repository's release and compare its hash with the release's `SHA256SUMS.txt`. The hash detects a damaged or different download; it does not replace a publisher signature.
+For release identity and warning details, see [Windows security warnings](docs/SIGNING.md). Compare any download with the release's `SHA256SUMS.txt`; a matching hash confirms the file matches the published artifact, not that it is safe to run.
 
 For source access, the portable ZIP contains the same components. Extract everything and open `Update-Control.cmd`. Both `WindowsUpdateManager.bat` and the older `WU-ManagerFinal.bat` filename now launch the GUI. A keyboard menu remains available in `Update-Control-Console.cmd`.
 

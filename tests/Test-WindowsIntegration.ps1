@@ -72,17 +72,16 @@ try {
     Assert ((Get-ControlStatus).Verification -eq 'Verified') 'Hard Block status was not verified.'
     foreach($name in $serviceNames){Assert ((Get-Service $name).Status -eq 'Stopped' -and (Read-RegValue "$script:SvcRoot\$name" 'Start').Value -eq 4) "Service not blocked: $name"}
     $baselineId=(Read-Baseline).Id
-    # Deliberately drift one temporary service, then prove the SYSTEM guardian corrects it.
+    # Deliberately drift a temporary service and wait for the ACTUAL minute trigger, without starting the task manually.
     Set-Service -Name $serviceNames[0] -StartupType Manual
     Start-Service -Name $serviceNames[0]
-    Start-ScheduledTask -TaskName $taskName
-    $deadline=(Get-Date).AddSeconds(45)
+    $deadline=(Get-Date).AddSeconds(90)
     do {
         Start-Sleep -Milliseconds 500
         $blocked=(Read-RegValue "$script:SvcRoot\$($serviceNames[0])" 'Start').Value -eq 4 -and (Get-Service $serviceNames[0]).Status -eq 'Stopped'
     }while(-not $blocked -and (Get-Date) -lt $deadline)
-    Assert $blocked 'The real SYSTEM guardian did not reapply the block to the temporary service.'
-    Write-Host 'PASS: real service block, protected engine installation, task registration and SYSTEM enforcement.'
+    Assert $blocked 'The automatic minute trigger did not reapply the block to the temporary service.'
+    Write-Host 'PASS: real service block, protected engine installation, task registration and automatic one-minute SYSTEM enforcement.'
     Assert ((Invoke-ModeChange 'Store') -eq 0) 'Store transition failed.'
     Assert (@(Get-OurTasks).Count -eq 0) 'Store mode left a task behind.'
     Assert (-not (Test-Path -LiteralPath $script:InstalledEngine)) 'Store mode left the installed watchdog script.'

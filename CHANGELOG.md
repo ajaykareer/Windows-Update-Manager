@@ -1,13 +1,13 @@
 # Changelog
 
-## 4.3.0 — Verified blocking and task removal (development candidate)
+## 4.3.0 — Verified blocking and task removal (preview, 2026-10-16)
 
 - Keeps Hard Block with one SYSTEM watchdog and startup/minute triggers. Verifies its exact command, enabled triggers, identity and installed script, then requires a current-session task check before accepting a completed block.
 - Rolls back a new block if task execution cannot be verified. Distinguishes restart-required changes from verified results.
 - Adds live verification for policy, services, task configuration, script integrity and recent task checks. A saved mode alone no longer looks like proof of effective blocking.
 - Makes **Unblock updates → Unblock & remove tasks** explicit. Removes known tasks across all folders, the installed watchdog script and its health record, while retaining recovery backups. Store Friendly also removes watchdog components.
 - Adds real Windows integration coverage for task execution, nested task cleanup and preservation of unrelated tasks, plus regressions for stale/corrupt health, timeouts, service drift and changed scripts.
-- Adds a release preflight requiring a valid timestamped publisher signature and a recorded Microsoft determination for the exact signed EXE hash. This is not a guarantee of future antivirus acceptance; the 4.2.2 detection remains unresolved, and the candidate stays in draft.
+- Adds a release preflight requiring a valid timestamped publisher signature and a recorded Microsoft determination for the exact signed EXE hash. The public prerelease has not passed this preflight; the 4.2.2 detection remains unresolved. The maintainer requested publication of the unchanged candidate artifacts on 2026-10-16.
 
 ## 4.2.2 — Clear mode selection and Apply
 

@@ -21,7 +21,9 @@ using System.ServiceProcess;
 public sealed class TestService : ServiceBase {
     public TestService(string name) { ServiceName = name; CanStop = true; }
     protected override void OnStart(string[] args) { }
-    protected override void OnStop() { }
+    protected override void OnStop() {
+        if (ServiceName.EndsWith("A")) { RequestAdditionalTime(30000); System.Threading.Thread.Sleep(25000); }
+    }
     public static void Main(string[] args) { ServiceBase.Run(new TestService(args[0])); }
 }
 '@
@@ -65,6 +67,10 @@ try {
     foreach($name in $serviceNames){Start-Service -Name $name}
     New-Item -Path $script:AuKey -Force | Out-Null
     New-ItemProperty -Path "$script:SvcRoot\$($serviceNames[0])" -Name DelayedAutoStart -PropertyType DWord -Value 1 -Force | Out-Null
+    # Leave a REAL slow stop in flight before Apply, reproducing the reported pending-service case.
+    & sc.exe stop $serviceNames[0] | Out-Null
+    if($LASTEXITCODE -ne 0){throw 'Could not initiate the temporary slow service stop.'}
+    Assert ((Get-Service $serviceNames[0]).Status -eq 'StopPending') 'Slow service did not enter StopPending.'
     Assert ((Invoke-ModeChange 'Hard') -eq 0) 'Hard mode returned failure.'
     Assert ((Read-State).Mode -eq 'Hard') 'Hard state missing.'
     Assert (@(Get-OurTasks).Count -eq 1) 'Expected one real scheduled task.'
@@ -75,13 +81,13 @@ try {
     # Deliberately drift a temporary service and wait for the ACTUAL minute trigger, without starting the task manually.
     Set-Service -Name $serviceNames[0] -StartupType Manual
     Start-Service -Name $serviceNames[0]
-    $deadline=(Get-Date).AddSeconds(90)
+    $deadline=(Get-Date).AddSeconds(120)
     do {
         Start-Sleep -Milliseconds 500
         $blocked=(Read-RegValue "$script:SvcRoot\$($serviceNames[0])" 'Start').Value -eq 4 -and (Get-Service $serviceNames[0]).Status -eq 'Stopped'
     }while(-not $blocked -and (Get-Date) -lt $deadline)
     Assert $blocked 'The automatic minute trigger did not reapply the block to the temporary service.'
-    Write-Host 'PASS: real service block, protected engine installation, task registration and automatic one-minute SYSTEM enforcement.'
+    Write-Host 'PASS: real 25-second pending stop, service block, protected engine installation, task registration and automatic one-minute SYSTEM enforcement.'
     Assert ((Invoke-ModeChange 'Store') -eq 0) 'Store transition failed.'
     Assert (@(Get-OurTasks).Count -eq 0) 'Store mode left a task behind.'
     Assert (-not (Test-Path -LiteralPath $script:InstalledEngine)) 'Store mode left the installed watchdog script.'

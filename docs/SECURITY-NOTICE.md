@@ -2,6 +2,8 @@
 
 Status as of 2026-10-16: **unresolved; no vendor verdict obtained**.
 
+Version 4.3.1 addresses slow service transitions and restart prompts. These functional fixes do not change the unresolved status of the earlier detection. The public preview keeps this notice and the validation limits available.
+
 The [4.3.0 Preview](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.0) adds functional verification and more complete watchdog cleanup. It was published as a prerelease on 2026-10-16 at the maintainer's request, using the unchanged validated candidate files. It is not a resolution of the detection below and has not passed the [release review preflight](SIGNING.md). No publisher signature or vendor determination has been obtained. Do not treat publication, source changes, functional tests or a different hash as antivirus clearance.
 
 A user supplied a Windows Security screenshot showing `Trojan:Win32/Sabsik.FL.A!ml` (Severe) for a downloaded file named `Update-Control 4.2.2.exe`. This establishes a detection associated with that filename. We have not obtained the affected file's SHA-256, the affected PC's Defender versions, or evidence identifying the detection trigger. The screenshot alone does not prove the affected file matches the published release, that the file is malicious, or that this is a false positive.

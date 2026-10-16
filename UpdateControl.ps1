@@ -27,6 +27,8 @@ $script:HardServices = @('wuauserv','UsoSvc','BITS','DoSvc')
 $script:StoreServices = @('wuauserv','UsoSvc','BITS','DoSvc','InstallService','AppXSvc','ClipSVC')
 $script:StoreStartServices = @('wuauserv','BITS','InstallService')
 $script:RebootNeeded = $false
+$script:ServiceTargets = @{}
+$script:RestartServices = @()
 $script:LogFile = $null
 $script:PSExe = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
@@ -86,7 +88,7 @@ function Read-State {
     } catch { return [pscustomobject]@{Mode='RecoveryRequired'; Detail='State file unreadable. Use Restore.'; UpdatedUtc=$null} }
 }
 function Save-State([string]$Mode,[string]$Detail,[string]$EngineHash='',[string]$BaselineId='') {
-    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Version='4.3.0'; Mode=$Mode; Detail=$Detail; Generation=[guid]::NewGuid().ToString('N'); EngineHash=$EngineHash; BaselineId=$BaselineId; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
+    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Version='4.3.1'; Mode=$Mode; Detail=$Detail; Generation=[guid]::NewGuid().ToString('N'); EngineHash=$EngineHash; BaselineId=$BaselineId; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
 }
 function Initialize-Storage {
     if (Test-Path -LiteralPath $script:Root) {
@@ -193,8 +195,13 @@ function Invoke-LegacyRepair([bool]$KeepManual) {
     if ($KeepManual) { $arguments += '-KeepAutomaticUpdatesDisabled' }
     $result=Invoke-Native $script:PSExe $arguments
     Write-Audit $result.Text
-    if ($result.Code -eq 3010) { $script:RebootNeeded=$true }
-    elseif ($result.Code -ne 0) { throw "Legacy repair needs attention (exit $($result.Code)). Read the log, restart if requested, then select Restore again." }
+    if ($result.Code -notin @(0,3010)) { throw "Legacy repair needs attention (exit $($result.Code)). Read the log, restart if requested, then select Restore again." }
+    # Read the helper's final configuration instead of retaining its earlier restart flag.
+    foreach ($name in @($script:StoreServices)+@('WaaSMedicSvc','wUpdate')) {
+        $saved=Read-RegValue "$script:SvcRoot\$name" 'Start'
+        if ($saved.Exists -and $saved.Value -in @(2,3,4)) { $script:ServiceTargets[$name]=[int]$saved.Value }
+    }
+    Update-RestartRequirement
 }
 function New-Baseline([bool]$Migrated) {
     $services=@()
@@ -222,21 +229,38 @@ function Read-Baseline {
     }
     return $baseline
 }
+function Update-RestartRequirement {
+    $pending=@()
+    foreach ($name in @($script:ServiceTargets.Keys | Sort-Object)) {
+        $target=[int]$script:ServiceTargets[$name]
+        if ((Read-RegValue "$script:SvcRoot\$name" 'Start').Value -ne $target) { throw "Startup verification failed: $name" }
+        $expected=@{2='Automatic';3='Manual';4='Disabled'}[$target]
+        $live=Get-Service -Name $name -ErrorAction Stop
+        if ("$($live.StartType)" -ne $expected) { $pending += $name }
+    }
+    $script:RestartServices=@($pending)
+    $script:RebootNeeded=$pending.Count -gt 0
+}
 function Set-ServiceMode([string]$Name,[int]$Start) {
     $mode = @{2='auto';3='demand';4='disabled'}[$Start]
     if (-not $mode) { throw 'Invalid service start value.' }
     $svc=Get-Service -Name $Name
     $current=Read-RegValue "$script:SvcRoot\$Name" 'Start'
     $types=@{2='Automatic';3='Manual';4='Disabled'}
-    if ($current.Value -eq $Start -and "$($svc.StartType)" -eq $types[$Start]) { return }
+    $script:ServiceTargets[$Name]=$Start
+    if ($current.Value -eq $Start -and "$($svc.StartType)" -eq $types[$Start]) { Update-RestartRequirement; return }
     $result=Invoke-Native 'sc.exe' @('config',$Name,'start=',$mode)
     Write-Audit "Configure $Name to ${mode}: $($result.Text)"
     if ($result.Code -ne 0) {
-        Set-ItemProperty -LiteralPath "$script:SvcRoot\$Name" -Name Start -Value $Start
-        $script:RebootNeeded=$true
-        Write-Audit "$Name registry updated; SCM may need a restart to reload it."
+        # sc.exe may fail its optional delayed-start change after the main startup change succeeded.
+        if ((Read-RegValue "$script:SvcRoot\$Name" 'Start').Value -ne $Start) {
+            Set-ItemProperty -LiteralPath "$script:SvcRoot\$Name" -Name Start -Value $Start
+            Write-Audit "$Name startup saved through the registry fallback; checking the live service configuration."
+        }
     }
-    if ((Read-RegValue "$script:SvcRoot\$Name" 'Start').Value -ne $Start) { throw "Startup verification failed: $Name" }
+    Update-RestartRequirement
+    if ($Name -in $script:RestartServices) { Write-Audit "$Name has the requested saved startup value, but its live startup setting differs. Restart remains pending." }
+    elseif ($result.Code -ne 0) { Write-Audit "$Name saved and live startup settings match despite the command warning. No restart needed for this service." }
 }
 function Restore-Baseline($Baseline,[bool]$KeepManual) {
     # When moving to Store mode, set manual OS updates BEFORE enabling shared services.
@@ -247,16 +271,45 @@ function Restore-Baseline($Baseline,[bool]$KeepManual) {
     }
     if (-not $KeepManual) { Write-RegValue $script:AuKey 'NoAutoUpdate' $Baseline.Policy }
 }
+function Get-ServiceWaitMilliseconds { return [Environment]::TickCount -band [int]::MaxValue }
+function Stop-ControlledService([string]$Name,[ValidateRange(1,300)][int]$TimeoutSeconds=120) {
+    $started=Get-ServiceWaitMilliseconds
+    $lastNotice=-10000
+    $nextRequest=0
+    $lastState=''
+    $lastCode=$null
+    do {
+        $svc=Get-Service -Name $Name -ErrorAction Stop
+        $state="$($svc.Status)"
+        $elapsed=((Get-ServiceWaitMilliseconds)-$started) -band [int]::MaxValue
+        if ($state -eq 'Stopped') { Write-Audit "$Name is stopped (waited $([int]($elapsed/1000)) seconds)."; return }
+        if ($elapsed -ge ($TimeoutSeconds*1000)) {
+            throw "Timed out waiting for $Name to stop after $TimeoutSeconds seconds (state: $state; last stop result: $lastCode). The block is incomplete; review Activity before retrying."
+        }
+        if ($state -ne $lastState -or ($elapsed-$lastNotice) -ge 10000) {
+            Write-Step "Waiting for $Name to stop: $state ($([int]($elapsed/1000)) / $TimeoutSeconds seconds)..."
+            $lastNotice=$elapsed; $lastState=$state
+        }
+        # Pending states already have a control in flight. Never send another stop while pending.
+        if ($state -in @('Running','Paused') -and $elapsed -ge $nextRequest) {
+            $result=Invoke-Native 'sc.exe' @('stop',$Name)
+            $lastCode=$result.Code
+            Write-Audit "Stop ${Name}: $($result.Text)"
+            if ($result.Code -notin @(0,1061,1062)) { throw "Cannot stop ${Name} (error $($result.Code)): $($result.Text)" }
+            # 1061 can race with a state change; 1062 can mean it stopped between reads.
+            # Re-read the actual state, and limit repeat requests while it still reports Running.
+            $nextRequest=$elapsed+5000
+        } elseif ($state -notin @('Running','Paused','StartPending','StopPending','PausePending','ContinuePending')) {
+            throw "Unexpected service state for ${Name}: $state"
+        }
+        Start-Sleep -Milliseconds 500
+    } while ($true)
+}
 function Set-HardBlock {
     Set-ManualPolicy
     foreach ($name in $script:HardServices) {
         Set-ServiceMode $name 4
-        $svc=Get-Service -Name $name
-        if ($svc.Status -ne 'Stopped') {
-            $result=Invoke-Native 'sc.exe' @('stop',$name)
-            if ($result.Code -notin @(0,1062)) { throw "Cannot stop ${name}: $($result.Text)" }
-            $svc.WaitForStatus([ServiceProcess.ServiceControllerStatus]::Stopped,[TimeSpan]::FromSeconds(15))
-        }
+        Stop-ControlledService $name
     }
 }
 function Register-Watchdog {
@@ -270,7 +323,8 @@ function Register-Watchdog {
     Set-Acl -LiteralPath $script:InstalledEngine -AclObject $fileAcl
     $taskAction=New-ScheduledTaskAction -Execute $script:PSExe -Argument ('-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -Action Enforce' -f $script:InstalledEngine)
     $triggers=@((New-ScheduledTaskTrigger -AtStartup),(New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)))
-    $settings=New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
+    # Four services can each need the bounded two-minute stop wait; don't terminate mid-check.
+    $settings=New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
     $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName $script:TaskName -TaskPath '\' -Action $taskAction -Trigger $triggers -Settings $settings -Principal $principal -Description 'Update Control v4: enforce Hard mode only. Restore disarms state before removing this task.' -Force | Out-Null
     Assert-WatchdogDefinition
@@ -385,6 +439,8 @@ function Invoke-ModeChange([string]$Mode) {
     Initialize-Storage
     $lock=Enter-OperationLock
     $script:RebootNeeded=$false
+    $script:ServiceTargets=@{}
+    $script:RestartServices=@()
     $baseline=$null
     try {
         $previous=Read-State
@@ -404,6 +460,7 @@ function Invoke-ModeChange([string]$Mode) {
             Invoke-LegacyRepair ($Mode -ne 'Restore')
         }
         if ($Mode -eq 'Restore') {
+            Update-RestartRequirement
             if ($baseline) { Assert-BaselineRestored $baseline }
             if (@(Get-OurTasks).Count) { throw 'Watchdogs remain; restoration is incomplete.' }
             $restoredId=if($baseline){$baseline.Id}elseif($previous.Mode -eq 'Normal' -and $previous.PSObject.Properties['BaselineId']){$previous.BaselineId}else{''}
@@ -415,8 +472,11 @@ function Invoke-ModeChange([string]$Mode) {
             if ($Mode -eq 'Store') {
                 Write-Step 'Setting manual Windows updates while keeping Store services available...'
                 Set-ManualPolicy
+                Update-RestartRequirement
                 Assert-StoreReady
                 Start-StoreDependencies
+                Update-RestartRequirement
+                Assert-StoreReady
                 Save-State 'Store' 'Automatic Windows updates disabled by policy; Store services remain available.'
                 Write-Step 'Store Friendly configured. Zero watchdogs. Try the app download.'
             } else {
@@ -426,6 +486,7 @@ function Invoke-ModeChange([string]$Mode) {
                 Register-Watchdog
                 $engineHash=(Get-FileHash -LiteralPath $script:InstalledEngine).Hash
                 Save-State 'Hard' 'Hard Block selected. Store downloads require Store Friendly or Unblock.' $engineHash
+                Update-RestartRequirement
                 if (-not $script:RebootNeeded) {
                     Assert-HardBlock
                     Write-Step 'Checking that the SYSTEM watchdog can run and verify this block...'
@@ -436,7 +497,7 @@ function Invoke-ModeChange([string]$Mode) {
                 } else { Write-Step 'Watchdog installed. Restart is required before the block can be fully verified.' }
             }
         }
-        if ($script:RebootNeeded) { Write-Host '  RESTART REQUIRED: some service changes need Windows to reload them.' -ForegroundColor Yellow; return 3010 }
+        if ($script:RebootNeeded) { Write-Step ('RESTART REQUIRED: saved and live startup settings differ for '+($script:RestartServices -join ', ')+'.'); return 3010 }
         return 0
     } catch {
         $failure=$_.Exception.Message
@@ -445,6 +506,10 @@ function Invoke-ModeChange([string]$Mode) {
         Save-State 'RecoveryRequired' $failure
         try { Remove-Watchdogs; Remove-WatchdogFiles } catch { Write-Audit "Cleanup also failed: $($_.Exception.Message)" }
         if ($Mode -ne 'Restore' -and $baseline) {
+            # Failed apply targets must not prevent restoration of the original configuration.
+            $script:ServiceTargets=@{}
+            $script:RestartServices=@()
+            $script:RebootNeeded=$false
             try { Restore-Baseline $baseline $false; Write-Audit 'Rolled back to baseline. Select Restore to finish verification.' }
             catch { Write-Audit "Rollback needs attention: $($_.Exception.Message)" }
         }

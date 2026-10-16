@@ -176,6 +176,15 @@ Write-Host 'PASS: actual task definition has one task, startup + minute triggers
     Assert (Test-Path -LiteralPath $script:BaselineFile) 'Recovery backup was lost.'
     Invoke-ModeChange 'Restore' | Out-Null
     Assert ((Read-State).Mode -eq 'Normal') 'Recovery restore failed.'
+    # A failed saved setting must not leave its obsolete target blocking rollback of other services.
+    function Register-Watchdog { $script:ServiceTargets['DoSvc']=4; throw 'Simulated failed saved target' }
+    function Restore-Baseline($Baseline,$KeepManual) {
+        Assert ($script:ServiceTargets.Count -eq 0) 'Failed apply targets were retained during rollback.'
+        foreach($svc in $Baseline.Services){$script:FakeStarts[$svc.Name]=[int]$svc.Start.Value}
+        $script:FakePolicy=$Baseline.Policy
+    }
+    $caught=$false;try{Invoke-ModeChange 'Hard' | Out-Null}catch{$caught=$true}
+    Assert ($caught -and $script:FakeStarts.DoSvc -ne 4) 'Failed target prevented baseline rollback.'
     # A registered task that never runs must roll back, retire its script and preserve recovery data.
     function Register-Watchdog { $script:FakeCount=1; [IO.File]::WriteAllText($script:InstalledEngine,'test fixture') }
     function Verify-WatchdogExecution { throw 'Simulated task never executed' }

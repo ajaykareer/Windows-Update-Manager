@@ -1,5 +1,13 @@
 # Changelog
 
+## 4.3.1 — Patient service stops and accurate restart prompts (preview, 2026-10-16)
+
+- Waits up to 120 seconds per service, observes pending start/stop transitions, and retries error 1061 with a five-second interval. Progress identifies the service and elapsed time. A stuck service still fails and triggers attempted rollback; access-denied errors are not retried as transient failures.
+- Re-reads saved and live startup settings after configuration. An optional delayed-start warning does not require a restart when the requested startup setting already took effect. Restart reasons identify the services whose saved and live settings differ and are rechecked before accepting Hard Block.
+- Clears obsolete restart requirements across restore-to-block transitions and protects rollback from failed apply targets. Legacy repair uses the same readback principle.
+- Extends the single watchdog's execution allowance to accommodate bounded waits without overlapping runs. Initial SYSTEM execution and service verification are still required for a completed block.
+- Adds isolated transition/readback regressions and a real 25-second pending-stop service to Windows integration tests. Changes do not resolve the earlier Defender report or establish antivirus acceptance.
+
 ## 4.3.0 — Verified blocking and task removal (preview, 2026-10-16)
 
 - Keeps Hard Block with one SYSTEM watchdog and startup/minute triggers. Verifies its exact command, enabled triggers, identity and installed script, then requires a current-session task check before accepting a completed block.

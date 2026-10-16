@@ -11,6 +11,8 @@ Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 $script:Issues = New-Object 'System.Collections.Generic.List[string]'
 $script:NeedsRestart = $false
+$script:RepairTargets = @{}
+$script:RepairRestartServices = @()
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
 $report = Join-Path $env:TEMP "WU-Store-Repair-$stamp-$PID.txt"
 $guardDir = Join-Path $env:ProgramData 'POS_WU_Guardian'
@@ -223,6 +225,17 @@ function Remove-MedicDeny {
     }
     Write-Log 'Other permissions and the current owner were preserved; v3.0 did not back up the original owner.'
 }
+function Update-RepairRestartRequirement {
+    $pending=@()
+    foreach ($name in @($script:RepairTargets.Keys | Sort-Object)) {
+        $target=[int]$script:RepairTargets[$name]
+        if ((Read-Value "$serviceRoot\$name" 'Start') -ne $target) { throw "Service $name startup did not change as expected." }
+        $live=Get-Service -Name $name -ErrorAction Stop
+        if ("$($live.StartType)" -ne @{2='Automatic';3='Manual'}[$target]) { $pending += $name }
+    }
+    $script:RepairRestartServices=@($pending)
+    $script:NeedsRestart=$pending.Count -gt 0
+}
 function Repair-Service([string]$Name, [int]$StartValue) {
     $service = Get-Service -Name $Name -ErrorAction SilentlyContinue
     if ($null -eq $service) {
@@ -231,6 +244,7 @@ function Repair-Service([string]$Name, [int]$StartValue) {
     }
     $key = "$serviceRoot\$Name"
     if ((Read-Value $key 'Start') -ne 4 -and $service.StartType -ne 'Disabled') { return }
+    $script:RepairTargets[$Name]=$StartValue
     $mode = 'demand'
     if ($StartValue -eq 2) { $mode = 'auto' }
     $result = & sc.exe config $Name start= $mode 2>&1
@@ -238,11 +252,11 @@ function Repair-Service([string]$Name, [int]$StartValue) {
         # Protected services may reject SCM changes even for administrators.
         # Do not take ownership or replace their security descriptors.
         Write-Log "SCM could not configure ${Name}: $result"
-        Set-ItemProperty -LiteralPath $key -Name Start -Value $StartValue
-        $script:NeedsRestart = $true
-        Write-Log "Updated existing service registry entry for $Name; reboot needed for SCM to reload it."
+        if ((Read-Value $key 'Start') -ne $StartValue) { Set-ItemProperty -LiteralPath $key -Name Start -Value $StartValue }
     } else { Write-Log "Enabled service ${Name}: $mode" }
-    if ((Read-Value $key 'Start') -ne $StartValue) { throw "Service $Name startup did not change as expected." }
+    Update-RepairRestartRequirement
+    if ($Name -in $script:RepairRestartServices) { Write-Log "$Name saved startup differs from its live configuration; restart remains pending." }
+    else { Write-Log "$Name saved and live startup settings match; no restart needed for this service." }
 }
 function Enable-OriginalTasks {
     foreach ($task in @(Get-ScheduledTask | Where-Object { ($_.TaskPath + $_.TaskName) -in $taskPaths })) {
@@ -316,8 +330,10 @@ try {
         }
         Enable-OriginalTasks
         Test-RepairState
+        Update-RepairRestartRequirement
         Write-State 'After'
-        Write-Log "`r`nRestart the PC, then run wsreset.exe from Win+R in the affected user account and retry installing ChatGPT."
+        if ($script:NeedsRestart) { Write-Log ('Restart required: saved and live startup settings differ for '+($script:RepairRestartServices -join ', ')+'.') }
+        Write-Log 'After resolving any reported issues or required restart, reopen Microsoft Store. If needed, run wsreset.exe from Win+R in the affected user account.'
         if ($KeepAutomaticUpdatesDisabled) { Write-Log 'Update services are enabled; automatic OS updates remain disabled by policy.' }
         else { Write-Log 'Windows Update is enabled again and may resume normal updates. Use Pause updates in Settings if needed.' }
         if ($script:Issues.Count -gt 0) {
@@ -327,7 +343,7 @@ try {
             $exitCode = 3010
             Write-Log 'Settings repaired; a restart is required before the result can be confirmed.'
         } else {
-            Write-Log 'Checked settings repaired. Confirm the app download after restarting; installation was not tested by this script.'
+            Write-Log 'Checked settings repaired. No service restart requirement was found. Confirm the app download; installation was not tested by this script.'
         }
     }
 } catch {

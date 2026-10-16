@@ -24,6 +24,8 @@ jobs:
           }
       - name: Controller regression tests
         run: .\tests\Test-UpdateControl.ps1
+      - name: Service transition and restart regressions
+        run: .\tests\Test-ServiceTransitions.ps1
       - name: Legacy repair regression tests
         run: .\tests\Test-Repair.ps1
       - name: Release readiness regression tests
@@ -43,7 +45,7 @@ jobs:
           name: Update-Control-Windows
           path: |
             dist/Update-Control.exe
-            dist/Update-Control-Desktop-v4.3.0.zip
+            dist/Update-Control-Desktop-v4.3.1.zip
             dist/Update-Control.ico
             dist/Update-Control.png
             dist/SHA256SUMS.txt

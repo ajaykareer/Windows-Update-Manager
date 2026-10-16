@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory=$true)][string]$ProgressPath
 )
 $ErrorActionPreference='Stop'
-$result=[ordered]@{Action=$JobAction; ExitCode=1; Error=$null; LogPath=$null; ReportPath=$null; Status=$null; StatusError=$null; Computer=$null}
+$result=[ordered]@{Action=$JobAction; ExitCode=1; Error=$null; LogPath=$null; ReportPath=$null; Status=$null; StatusError=$null; Computer=$null; RestartServices=@()}
 try {
     . (Join-Path $PSScriptRoot 'UpdateControl.ps1') -Action $JobAction
     # Reuse the controller; replace only its presentation callback for this worker.
@@ -16,6 +16,7 @@ try {
     }
     if ($JobAction -in @('Hard','Restore','Store')) {
         $result.ExitCode=Invoke-ModeChange $JobAction
+        $result.RestartServices=@($script:RestartServices)
         $result.LogPath=$script:LogFile
     } elseif ($JobAction -eq 'Report') {
         $result.ReportPath=Save-Report

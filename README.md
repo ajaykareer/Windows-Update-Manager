@@ -10,7 +10,7 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 [Release status and historical assets](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2) — neither the portable scripts nor older releases are a verified workaround for this detection.
 
-**4.3.0 Preview is available with stronger verification and a simpler unblock action.** [Download the EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.0/Update-Control.exe) or read the [release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.0). This is a public prerelease; publication does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
+**4.3.1 Preview is available with stronger verification and a simpler unblock action.** [Download the EXE](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.1/Update-Control.exe) or read the [release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.1). This is a public prerelease; publication does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
 
 **Use at your own risk.** Changing update settings can delay security fixes or interrupt Store downloads. Keep antivirus protection enabled; do not add an exclusion to bypass a detection. This disclaimer does not resolve the reported detection above.
 
@@ -20,7 +20,7 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 ## Start here
 
-**These instructions describe the 4.3.0 preview. Review the [reported Defender detection](docs/SECURITY-NOTICE.md) and known limitations before use. If security software detects a file, keep it quarantined; do not use exclusions or script launchers to bypass the detection.**
+**These instructions describe the 4.3.1 preview. Review the [reported Defender detection](docs/SECURITY-NOTICE.md) and known limitations before use. If security software detects a file, keep it quarantined; do not use exclusions or script launchers to bypass the detection.**
 
 1. Download **Update-Control.exe** and open it on the PC you want to manage. Accept the administrator prompt.
 2. If you used the old script, select **Unblock updates**, then **Unblock & remove tasks**. Follow any restart message.
@@ -49,6 +49,8 @@ For source access, the portable ZIP contains the same components. Extract everyt
 Hard Block also affects BITS and Delivery Optimization, which other applications use. Windows servicing or other administrative software may counteract service blocking. The application does not promise permanent suppression of all updates.
 
 ## How the watchdog is verified
+
+Version 4.3.1 waits up to two minutes per service, shows progress while a service starts or stops, and retries a transient 1061 response. It asks for a restart only when a saved startup setting still differs from Windows' live configuration, naming the affected services. A configuration command's warning alone does not trigger a restart. A service that remains stuck reports an incomplete operation and triggers attempted rollback.
 
 Hard Block installs **one** `POS-WU-Guardian-v4` task running as SYSTEM, with startup and one-minute triggers. Apply checks the executable path, arguments, identity, enabled triggers and installed-script hash, then starts the task and waits for a check tied to this particular blocking session. A task that registers but cannot run causes failure and attempted rollback. If service changes need a restart, the app explicitly reports that verification is incomplete.
 

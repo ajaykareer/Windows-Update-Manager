@@ -1,6 +1,8 @@
 # Reported Microsoft Defender detection
 
-Status as of 2026-10-16: **unresolved; no vendor verdict obtained**.
+Status as of 2026-11-05: **unresolved; no vendor verdict obtained**.
+
+Version 4.3.2 fixes service startup resets and was published as the latest release at the maintainer's request. The exact EXE and ZIP were functionally tested on a Windows 10 Pro client. This release remains unsigned; functional validation and the latest-release designation do not resolve the earlier detection or establish antivirus clearance.
 
 Version 4.3.1 addresses slow service transitions and restart prompts. These functional fixes do not change the unresolved status of the earlier detection. The public preview keeps this notice and the validation limits available.
 

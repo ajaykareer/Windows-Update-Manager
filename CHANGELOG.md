@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.3.2 — Recover from service startup resets (2026-11-05)
+
+- Fixes a failure recorded on a Windows 10 Pro client: an earlier service changes its startup setting while a later service is stopping, causing premature `Startup verification failed` errors in Apply and the watchdog.
+- Disables the service group before stopping it, reapplies startup settings after stops finish, and reads the whole group again after a two-second settling period. Late changes receive at most three passes within one ten-minute stop budget. Persistent interference still fails explicitly; denied changes and stuck stops remain errors.
+- Reapplying Hard Block retains the original baseline without temporarily enabling its original service settings. Restore and Store Friendly still use that baseline.
+- Adds isolated regressions for the observed wuauserv/BITS resets, late service restart, persistent interference, policy drift, denied changes, restart requirements, the total time budget and Hard reapplication.
+- Functional verification establishes current policy/service/task state and recent watchdog execution. It does not cancel pending updates, establish reboot persistence without a reboot, or resolve the previous antivirus report.
+- Published as the latest release at the maintainer's request. The EXE and ZIP are the unchanged candidate files used for the successful client test; publication does not claim publisher signing or completed vendor review.
+
 ## 4.3.1 — Patient service stops and accurate restart prompts (preview, 2026-10-16)
 
 - The published download is named `Update-Control-4.3.1.exe`; renaming did not change its bytes or SHA-256. Future build, signing and package paths derive their versioned filename from the launcher manifest.

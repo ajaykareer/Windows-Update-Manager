@@ -26,6 +26,8 @@ jobs:
         run: .\tests\Test-UpdateControl.ps1
       - name: Service transition and restart regressions
         run: .\tests\Test-ServiceTransitions.ps1
+      - name: Service reset and bounded convergence regressions
+        run: .\tests\Test-ServiceConvergence.ps1
       - name: Legacy repair regression tests
         run: .\tests\Test-Repair.ps1
       - name: Release readiness regression tests

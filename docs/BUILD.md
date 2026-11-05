@@ -1,6 +1,6 @@
 # Building Update Control
 
-Version 4.3.1 is a development candidate. Build outputs are for review; they have not been cleared as a replacement for the reported 4.2.2 detection. See [release preflight and signing](SIGNING.md).
+Version 4.3.2 is the latest published release. It remains unsigned and has not been cleared as a replacement for the reported 4.2.2 detection. See [release preflight and signing](SIGNING.md).
 
 Use Windows PowerShell 5.1 on Windows 10/11 with .NET Framework 4.8 or later. Building does not require elevation, downloaded packages, or changes to update settings. The workflow uses a Windows Server 2022 runner for the Windows API tests; that does not establish client OS policy support.
 
@@ -13,8 +13,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Package.ps1
 
 The build creates these ignored outputs in `dist`:
 
-- `Update-Control-4.3.1.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon. The filename follows the version in `launcher/app.manifest` automatically.
-- `Update-Control-Desktop-v4.3.1.zip`: the same application components for manual extraction.
+- `Update-Control-4.3.2.exe`: native C# launcher with embedded ZIP, SHA-256 integrity check, administrator manifest, and application icon. The filename follows the version in `launcher/app.manifest` automatically.
+- `Update-Control-Desktop-v4.3.2.zip`: the same application components for manual extraction.
 - `SHA256SUMS.txt`: checksums for both downloads.
 - `Update-Control.ico` and `Update-Control.png`: reusable application icon assets (also covered by the checksums).
 
@@ -24,13 +24,14 @@ The launcher validates the embedded archive and caches files under `%ProgramFile
 
 No signing certificate is included. An unsigned build has no verified publisher identity.
 
-See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. Version 4.3.1 is available as a public prerelease at the maintainer's request; it has not completed the signature, exact-hash vendor review or publication preflight. The published files are the original validated candidate artifacts, not rebuilt from later documentation commits.
+See [publisher signing](SIGNING.md) for the optional SHA-256/RFC 3161 signing helper, provider requirements and the limits of signing. Version 4.3.2 was published as the latest release at the maintainer's request; it has not completed the signature or exact-hash vendor review preflight. The published files are the original tested candidate artifacts, not rebuilt from later documentation commits. The release validation record identifies the source, CI run and exact artifact hashes.
 
 ## Local checks
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-UpdateControl.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-ServiceTransitions.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-ServiceConvergence.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tests\Test-Repair.ps1
 powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File .\UpdateControl.GUI.ps1 -SmokeTest
 ```

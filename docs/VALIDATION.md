@@ -1,6 +1,6 @@
 # Validation and limits
 
-Version 4.3.1 is a development candidate. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine, or that an antivirus detection is resolved.
+Version 4.3.2 is the latest published release. A successful build is not a guarantee that Windows servicing, every protected service, or Microsoft Store behaves identically on every machine, or that an antivirus detection is resolved.
 
 See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manager/actions/workflows/windows.yml) for the result on each commit. The release packages should come from a successful run for the release commit.
 
@@ -8,6 +8,7 @@ See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manag
 | --- | --- | --- |
 | Controller regression suite | Hard → Store → Restore, repeated restore, original policy, immutable baseline, failure rollback, corrupt state, real file locks, task startup timeout, stale/corrupt/future health rejection, service drift and changed script detection | Actual Windows Update service permissions or OS policy enforcement |
 | Service transition regressions | Pending start/stop, slow completion, 1061/1062 races, retry interval, timeout, denied stop, optional-flag warning, actual saved/live mismatch, cleared restart reasons and failed registry writes | Timing and permissions of every Windows client service |
+| Service convergence regressions | Recorded earlier-service and BITS startup resets, late restart, bounded persistent interference, policy drift, denied changes, saved/live restart requirements, total stop budget and Hard reapplication without unblocking | Every future source of service changes or Windows Update installation behavior |
 | Watchdog removal regression | Both legacy naming families; all task folders; independent disable/stop/delete attempts; CLI fallback; remaining tasks fail explicitly | Every third-party task or renamed/custom blocker |
 | Repair regression suite | Exact known policy/ACL cleanup, unrelated policy preservation, service fallback errors, backup and teardown ordering | Exact pre-script permissions that old releases never recorded |
 | WPF smoke test | Actual status worker, card heading/body/padding hit targets, unobstructed Apply target at standard/minimum sizes, accessibility selection/invocation, no changes on selection/cancel, action routing, modal isolation, disabled-state reasons and selection persistence | Physical pointer/keyboard input or a real privileged button click on the affected PC |
@@ -19,6 +20,10 @@ See [Windows validation runs](https://github.com/ajaykareer/Windows-Update-Manag
 The development workstation's update configuration is not modified by local tests. The hosted integration test uses uniquely named disposable resources and never targets Windows Update services or policy keys.
 
 ## Still requires a representative Windows client
+
+On 2026-11-05, the 4.3.2 candidate was applied to a Windows 10 Pro client, build 19045. Apply completed with all four services stopped/disabled and a successful SYSTEM watchdog check. Subsequent automatic minute runs at 12:57 and 12:58 PM Toronto time passed; live checks continued passing through 1:01 PM. Retrieved state, health and installed script confirmed version 4.3.2, a matching health generation, and an installed script SHA-256 identical to the tested source and recorded engine hash. The original restoration baseline remained unchanged. The private machine logs and report are retained locally, outside this repository.
+
+This establishes successful live application and scheduled enforcement checks on that client. It does not establish persistence after reboot, cancellation of pending updates, Store installation behavior, or equivalent results on every Windows edition. No reboot, forced update scan, intentional enabling of update services, or Store installation was performed during this verification.
 
 - A real legacy-blocker upgrade, including protected service/registry ACL repair and any requested restart.
 - Hard Block across restart and Windows servicing activity.

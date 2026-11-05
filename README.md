@@ -6,11 +6,15 @@
 
 A Windows desktop interface for controlling automatic OS updates, keeping Microsoft Store available, and removing this tool's blocker reliably.
 
+**Latest release: 4.3.2.** [Download Update-Control-4.3.2.exe](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.2/Update-Control-4.3.2.exe) · [Portable ZIP](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.2/Update-Control-Desktop-v4.3.2.zip) · [Release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.2)
+
+Fixes service startup resets during Hard Block and avoids briefly enabling services when reapplying it. Live application and subsequent automatic watchdog checks passed on a Windows 10 Pro client. Existing version 4 users should close the older app, open 4.3.2 and **apply Hard Block once** to install the updated watchdog. The original restoration backup is preserved. See the [changelog](CHANGELOG.md) and [verification instructions](docs/TROUBLESHOOTING.md#startup-verification-failed--services-change-back).
+
 > **Security notice — 2026-10-09:** Microsoft Defender detected a file named `Update-Control 4.2.2.exe` as `Trojan:Win32/Sabsik.FL.A!ml` on a user's PC. The affected copy's hash and the cause are not yet verified; a false positive has not been established. **Do not run or allow the reported build while this remains unresolved.** The earlier negative scan is historical evidence, not clearance. Read the [notice and containment steps](docs/SECURITY-NOTICE.md).
 
 [Release status and historical assets](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.2.2) — neither the portable scripts nor older releases are a verified workaround for this detection.
 
-**4.3.1 Preview is available with stronger verification and a simpler unblock action.** [Download Update-Control-4.3.1.exe](https://github.com/ajaykareer/Windows-Update-Manager/releases/download/v4.3.1/Update-Control-4.3.1.exe) or read the [release notes](https://github.com/ajaykareer/Windows-Update-Manager/releases/tag/v4.3.1). This is a public prerelease; publication does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
+The 4.3.2 download remains unsigned. Publication as the latest release does not resolve the 4.2.2 Defender report or establish antivirus clearance. See [validation and limitations](docs/VALIDATION.md) and [release review status](docs/SIGNING.md).
 
 **Use at your own risk.** Changing update settings can delay security fixes or interrupt Store downloads. Keep antivirus protection enabled; do not add an exclusion to bypass a detection. This disclaimer does not resolve the reported detection above.
 
@@ -20,9 +24,9 @@ A Windows desktop interface for controlling automatic OS updates, keeping Micros
 
 ## Start here
 
-**These instructions describe the 4.3.1 preview. Review the [reported Defender detection](docs/SECURITY-NOTICE.md) and known limitations before use. If security software detects a file, keep it quarantined; do not use exclusions or script launchers to bypass the detection.**
+**These instructions describe version 4.3.2. Review the [reported Defender detection](docs/SECURITY-NOTICE.md) and known limitations before use. If security software detects a file, keep it quarantined; do not use exclusions or script launchers to bypass the detection.**
 
-1. Download **Update-Control-4.3.1.exe** and open it on the PC you want to manage. Accept the administrator prompt.
+1. Download **Update-Control-4.3.2.exe** and open it on the PC you want to manage. Accept the administrator prompt.
 2. If you used the old script, select **Unblock updates**, then **Unblock & remove tasks**. Follow any restart message.
 3. Click the **Store Friendly** card, then **Apply Store Friendly** to keep automatic Windows updates disabled by policy while allowing Store downloads, including apps such as ChatGPT.
 4. To block shared update services, select **Hard Block**, review the warning about Store downloads and the watchdog, and confirm. Wait for **Verified**; **Restart required** and **Needs attention** are not a completed verification.
@@ -50,7 +54,7 @@ Hard Block also affects BITS and Delivery Optimization, which other applications
 
 ## How the watchdog is verified
 
-Version 4.3.1 waits up to two minutes per service, shows progress while a service starts or stops, and retries a transient 1061 response. It asks for a restart only when a saved startup setting still differs from Windows' live configuration, naming the affected services. A configuration command's warning alone does not trigger a restart. A service that remains stuck reports an incomplete operation and triggers attempted rollback.
+Version 4.3.2 disables the group before stopping services, reapplies startup settings after stops, and checks again after a two-second settling period. Late service resets receive at most three passes within one ten-minute stop budget. Individual stops wait up to two minutes, show progress and retry transient error 1061. Persistent interference or a stuck service reports an incomplete operation and triggers attempted rollback. A restart is requested only when saved startup settings still differ from Windows' live configuration; the affected services are named.
 
 Hard Block installs **one** `POS-WU-Guardian-v4` task running as SYSTEM, with startup and one-minute triggers. Apply checks the executable path, arguments, identity, enabled triggers and installed-script hash, then starts the task and waits for a check tied to this particular blocking session. A task that registers but cannot run causes failure and attempted rollback. If service changes need a restart, the app explicitly reports that verification is incomplete.
 

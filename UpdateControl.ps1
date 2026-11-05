@@ -88,7 +88,7 @@ function Read-State {
     } catch { return [pscustomobject]@{Mode='RecoveryRequired'; Detail='State file unreadable. Use Restore.'; UpdatedUtc=$null} }
 }
 function Save-State([string]$Mode,[string]$Detail,[string]$EngineHash='',[string]$BaselineId='') {
-    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Version='4.3.1'; Mode=$Mode; Detail=$Detail; Generation=[guid]::NewGuid().ToString('N'); EngineHash=$EngineHash; BaselineId=$BaselineId; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
+    Write-AtomicJson $script:StateFile ([ordered]@{Schema=4; Version='4.3.2'; Mode=$Mode; Detail=$Detail; Generation=[guid]::NewGuid().ToString('N'); EngineHash=$EngineHash; BaselineId=$BaselineId; UpdatedUtc=[DateTime]::UtcNow.ToString('o')})
 }
 function Initialize-Storage {
     if (Test-Path -LiteralPath $script:Root) {
@@ -241,14 +241,17 @@ function Update-RestartRequirement {
     $script:RestartServices=@($pending)
     $script:RebootNeeded=$pending.Count -gt 0
 }
-function Set-ServiceMode([string]$Name,[int]$Start) {
+function Set-ServiceMode([string]$Name,[int]$Start,[switch]$DeferVerification) {
     $mode = @{2='auto';3='demand';4='disabled'}[$Start]
     if (-not $mode) { throw 'Invalid service start value.' }
     $svc=Get-Service -Name $Name
     $current=Read-RegValue "$script:SvcRoot\$Name" 'Start'
     $types=@{2='Automatic';3='Manual';4='Disabled'}
     $script:ServiceTargets[$Name]=$Start
-    if ($current.Value -eq $Start -and "$($svc.StartType)" -eq $types[$Start]) { Update-RestartRequirement; return }
+    if ($current.Value -eq $Start -and "$($svc.StartType)" -eq $types[$Start]) {
+        if (-not $DeferVerification) { Update-RestartRequirement }
+        return
+    }
     $result=Invoke-Native 'sc.exe' @('config',$Name,'start=',$mode)
     Write-Audit "Configure $Name to ${mode}: $($result.Text)"
     if ($result.Code -ne 0) {
@@ -258,6 +261,9 @@ function Set-ServiceMode([string]$Name,[int]$Start) {
             Write-Audit "$Name startup saved through the registry fallback; checking the live service configuration."
         }
     }
+    # Hard Block verifies the whole group after stops finish. Another service can
+    # reset an earlier target during this pass; that is handled by bounded retries.
+    if ($DeferVerification) { return }
     Update-RestartRequirement
     if ($Name -in $script:RestartServices) { Write-Audit "$Name has the requested saved startup value, but its live startup setting differs. Restart remains pending." }
     elseif ($result.Code -ne 0) { Write-Audit "$Name saved and live startup settings match despite the command warning. No restart needed for this service." }
@@ -306,11 +312,40 @@ function Stop-ControlledService([string]$Name,[ValidateRange(1,300)][int]$Timeou
     } while ($true)
 }
 function Set-HardBlock {
-    Set-ManualPolicy
-    foreach ($name in $script:HardServices) {
-        Set-ServiceMode $name 4
-        Stop-ControlledService $name
+    $started=Get-ServiceWaitMilliseconds
+    $lastFailure=''
+    for ($attempt=1; $attempt -le 3; $attempt++) {
+        Write-Step "Checking the update-service group (pass $attempt / 3)..."
+        Set-ManualPolicy
+        # Disable the entire group before waiting on any individual service.
+        foreach ($name in $script:HardServices) { Set-ServiceMode $name 4 -DeferVerification }
+        foreach ($name in $script:HardServices) {
+            # Keep all retries inside one ten-minute budget, including slow stops.
+            $elapsed=((Get-ServiceWaitMilliseconds)-$started) -band [int]::MaxValue
+            $remaining=[int][Math]::Floor((600000-$elapsed)/1000)
+            if ($remaining -lt 1) { throw 'Hard Block could not stabilize within ten minutes. The block is incomplete.' }
+            Stop-ControlledService $name -TimeoutSeconds ([Math]::Min(120,$remaining))
+        }
+        # BITS and other services can change their own startup setting while
+        # stopping. Reapply after stopping, then require a quiet readback window.
+        foreach ($name in $script:HardServices) { Set-ServiceMode $name 4 -DeferVerification }
+        Start-Sleep -Milliseconds 2000
+        try {
+            $policy=Read-RegValue $script:AuKey 'NoAutoUpdate'
+            if (-not $policy.Exists -or $policy.Kind -ne 'DWord' -or $policy.Value -ne 1) { throw 'Automatic-update policy changed during verification.' }
+            Update-RestartRequirement
+            foreach ($name in $script:HardServices) {
+                if ((Get-Service -Name $name -ErrorAction Stop).Status -ne 'Stopped') { throw "$name restarted during verification." }
+            }
+            if (-not $script:RebootNeeded) { Assert-HardBlock }
+            return
+        } catch { $lastFailure=$_.Exception.Message }
+        if ($attempt -lt 3) {
+            Write-Step "Windows changed an update service during verification. Retrying the group: $lastFailure"
+            Start-Sleep -Milliseconds 3000
+        }
     }
+    throw "Windows kept changing the update-service settings after three passes. The block is incomplete. $lastFailure"
 }
 function Register-Watchdog {
     if ([IO.Path]::GetFullPath($PSCommandPath) -ne [IO.Path]::GetFullPath($script:InstalledEngine)) {
@@ -323,7 +358,7 @@ function Register-Watchdog {
     Set-Acl -LiteralPath $script:InstalledEngine -AclObject $fileAcl
     $taskAction=New-ScheduledTaskAction -Execute $script:PSExe -Argument ('-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -Action Enforce' -f $script:InstalledEngine)
     $triggers=@((New-ScheduledTaskTrigger -AtStartup),(New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)))
-    # Four services can each need the bounded two-minute stop wait; don't terminate mid-check.
+    # Group convergence has a ten-minute budget; leave time for task startup and health output.
     $settings=New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 12)
     $principal=New-ScheduledTaskPrincipal -UserId 'S-1-5-18' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName $script:TaskName -TaskPath '\' -Action $taskAction -Trigger $triggers -Settings $settings -Principal $principal -Description 'Update Control v4: enforce Hard mode only. Restore disarms state before removing this task.' -Force | Out-Null
@@ -450,7 +485,7 @@ function Invoke-ModeChange([string]$Mode) {
         Remove-Watchdogs
         Remove-WatchdogFiles
         $baseline=Read-Baseline
-        if ($baseline) {
+        if ($baseline -and $Mode -ne 'Hard') {
             Write-Step 'Restoring the saved service settings...'
             Restore-Baseline $baseline ($Mode -ne 'Restore')
         }

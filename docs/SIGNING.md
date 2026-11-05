@@ -46,6 +46,8 @@ The candidate remains unsigned and has not received a Microsoft determination. I
 
 The same review limitations apply to the 4.3.1 service-wait and restart fixes. Publication as a preview does not claim a successful security review.
 
+Version 4.3.2 was published as the latest release on 2026-11-05 at the maintainer's request, using the unchanged functionally tested candidate artifacts. It remains unsigned and has no Microsoft determination. The latest-release designation does not claim completion of the signature/vendor-review preflight below.
+
 Before promoting a replacement EXE as having completed this review, sign it using a trusted identity, obtain and inspect Microsoft's determination for those final signed bytes, and record the actual response using [release-review.template.json](release-review.template.json). Keep the template pending until there is evidence; do not substitute a local negative scan or invent a review outcome.
 
 ```powershell

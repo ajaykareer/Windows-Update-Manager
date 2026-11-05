@@ -45,6 +45,14 @@ In 4.3.1, the controller compares the saved startup value with a fresh reading o
 
 If a restart is requested, save your work, restart Windows yourself, reopen the app and refresh status. This result means verification is incomplete, not that a restart guarantees success. If a dependency is still disabled, use Unblock and inspect the log.
 
+## Startup verification failed / services change back
+
+Version 4.3.2 addresses startup resets recorded on a Windows 10 Pro client. The previous controller could abort when wuauserv changed back while UsoSvc was stopping, or when BITS changed its own startup setting during its stop. The new controller disables the group first, stops it, reapplies startup settings, then checks the whole group after a two-second settling period. It retries late changes up to three times within one ten-minute stop budget. Hard reapplication no longer enables the original startup settings before blocking again.
+
+If Windows continues changing the settings, the operation reports an incomplete block and attempts rollback. It does not change Windows service permissions, disable antivirus or terminate shared service processes.
+
+To check the block, open **System details**: wuauserv, UsoSvc, BITS and DoSvc must each show **Stopped / Disabled**, the policy/task/script checks must pass, and **Recent watchdog run** must show a current successful check. Save a diagnostic report to retain the evidence. A saved mode or task count alone is insufficient. A service/task check is not proof that pending updates cannot complete; reboot persistence requires checking again after an actual restart.
+
 ## Slow stops and error 1061
 
 Version 4.3.1 waits up to 120 seconds for each service to stop. It observes StartPending/StopPending instead of sending repeated stop commands during those transitions. If Windows returns 1061 after a state change, it re-reads status and retries at five-second intervals when the service is ready. Activity shows the service, state and elapsed time at least every ten seconds while polling.
